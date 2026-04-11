@@ -9,6 +9,7 @@ const envSchema = z.object({
   FRONIUS_BASE_URL: z.string().url().default("http://192.168.70.79"),
   FRONIUS_USERNAME: z.string().default(""),
   FRONIUS_PASSWORD: z.string().default(""),
+  HEATPUMP_HISTORY_DB_PATH: z.string().min(1).default("/app/data/heatpump-history.db"),
   LUXTRONIC_HOST: z.string().min(1).default("192.168.70.47"),
   LUXTRONIC_PORT: z.coerce.number().int().positive().default(8214),
   LUXTRONIC_PASSWORD: z.string().min(1),
