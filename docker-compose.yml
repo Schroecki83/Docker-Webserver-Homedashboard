@@ -1,0 +1,18 @@
+services:
+  app:
+    image: home-dashboard:latest
+    build: .
+    container_name: home-dashboard
+    ports:
+      - "${PORT:-3001}:3001"
+    environment:
+      - FRONIUS_BASE_URL=${FRONIUS_BASE_URL}
+      - FRONIUS_USERNAME=${FRONIUS_USERNAME}
+      - FRONIUS_PASSWORD=${FRONIUS_PASSWORD}
+      - LUXTRONIC_HOST=${LUXTRONIC_HOST}
+      - LUXTRONIC_PORT=${LUXTRONIC_PORT}
+      - LUXTRONIC_PASSWORD=${LUXTRONIC_PASSWORD}
+      - SHELLY_HT_DEVICES=${SHELLY_HT_DEVICES}
+      - SHELLY_GEN1_DEVICES=${SHELLY_GEN1_DEVICES}
+      - PORT=${PORT:-3001}
+    restart: unless-stopped
