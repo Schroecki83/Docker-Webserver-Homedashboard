@@ -1,0 +1,15 @@
+<svg id="Ebene_1" data-name="Ebene 1"
+    xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+    <defs>
+        <style>.cls-1{fill:#f7c002;}.cls-2{fill:#f7c000;stroke:#f7c000;stroke-miterlimit:10;stroke-width:0.3px;}</style>
+    </defs>
+    <path id="Pfad_7565" data-name="Pfad 7565" class="cls-1" d="M12,8a4,4,0,1,0,4,4A4,4,0,0,0,12,8Z"/>
+    <rect class="cls-2" x="11.25" y="2" width="1.5" height="4" rx="0.75"/>
+    <rect class="cls-2" x="11.25" y="18" width="1.5" height="4" rx="0.75"/>
+    <rect class="cls-2" x="19.25" y="10" width="1.5" height="4" rx="0.75" transform="translate(32 -8) rotate(90)"/>
+    <rect class="cls-2" x="3.25" y="10" width="1.5" height="4" rx="0.75" transform="translate(16 8) rotate(90)"/>
+    <rect class="cls-2" x="16.91" y="15.66" width="1.5" height="4" rx="0.75" transform="translate(42.63 17.66) rotate(135)"/>
+    <rect class="cls-2" x="5.59" y="4.34" width="1.5" height="4" rx="0.75" transform="translate(15.31 6.34) rotate(135)"/>
+    <rect class="cls-2" x="5.59" y="15.66" width="1.5" height="4" rx="0.75" transform="translate(-1.66 34.63) rotate(-135)"/>
+    <rect class="cls-2" x="16.91" y="4.34" width="1.5" height="4" rx="0.75" transform="translate(25.66 23.31) rotate(-135)"/>
+</svg>

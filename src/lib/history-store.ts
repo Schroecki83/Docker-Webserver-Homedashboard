@@ -3,7 +3,7 @@ import { dirname } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 
 import { env } from "@/lib/env";
-import type { HeatpumpSnapshot } from "@/lib/types";
+import type { ClimateReading, HeatpumpSnapshot } from "@/lib/types";
 
 const RETENTION_DAYS = 30;
 
@@ -39,6 +39,24 @@ function mapRowToSnapshot(row: HeatpumpHistoryRow): HeatpumpSnapshot {
   };
 }
 
+interface ClimateHistoryRow {
+  timestamp_utc: string;
+  ip: string;
+  device_name: string | null;
+  temperature_c: number | null;
+  humidity_pct: number | null;
+}
+
+function mapClimateRow(row: ClimateHistoryRow): ClimateReading {
+  return {
+    ip: row.ip,
+    deviceName: row.device_name,
+    temperatureC: row.temperature_c,
+    humidityPct: row.humidity_pct,
+    timestampUtc: row.timestamp_utc,
+  };
+}
+
 export function createHistoryStore(dbPath: string) {
   mkdirSync(dirname(dbPath), { recursive: true });
   const db = new DatabaseSync(dbPath);
@@ -55,6 +73,17 @@ export function createHistoryStore(dbPath: string) {
       warmwasser_soll_c REAL,
       waermequelle_ein_c REAL,
       waermequelle_aus_c REAL
+    )
+  `);
+
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS shelly_ht_history (
+      timestamp_utc TEXT NOT NULL,
+      ip TEXT NOT NULL,
+      device_name TEXT,
+      temperature_c REAL,
+      humidity_pct REAL,
+      PRIMARY KEY (timestamp_utc, ip)
     )
   `);
 
@@ -90,7 +119,55 @@ export function createHistoryStore(dbPath: string) {
     ORDER BY timestamp_utc ASC
   `);
 
+  const insertClimateStmt = db.prepare(`
+    INSERT OR REPLACE INTO shelly_ht_history (
+      timestamp_utc,
+      ip,
+      device_name,
+      temperature_c,
+      humidity_pct
+    ) VALUES (?, ?, ?, ?, ?)
+  `);
+
+  const queryClimateStmt = db.prepare(`
+    SELECT
+      timestamp_utc,
+      ip,
+      device_name,
+      temperature_c,
+      humidity_pct
+    FROM shelly_ht_history
+    WHERE timestamp_utc >= ?
+    ORDER BY timestamp_utc ASC, ip ASC
+  `);
+
+  const queryClimateByIpStmt = db.prepare(`
+    SELECT
+      timestamp_utc,
+      ip,
+      device_name,
+      temperature_c,
+      humidity_pct
+    FROM shelly_ht_history
+    WHERE timestamp_utc >= ? AND ip = ?
+    ORDER BY timestamp_utc ASC
+  `);
+
+  const queryLatestClimateByIpStmt = db.prepare(`
+    SELECT
+      timestamp_utc,
+      ip,
+      device_name,
+      temperature_c,
+      humidity_pct
+    FROM shelly_ht_history
+    WHERE ip = ?
+    ORDER BY timestamp_utc DESC
+    LIMIT 1
+  `);
+
   const pruneStmt = db.prepare(`DELETE FROM heatpump_history WHERE timestamp_utc < ?`);
+  const pruneClimateStmt = db.prepare(`DELETE FROM shelly_ht_history WHERE timestamp_utc < ?`);
 
   return {
     save(snapshot: HeatpumpSnapshot, retentionDays = RETENTION_DAYS) {
@@ -114,6 +191,40 @@ export function createHistoryStore(dbPath: string) {
       return rows.map(mapRowToSnapshot);
     },
 
+    saveClimate(readings: ClimateReading[], retentionDays = RETENTION_DAYS) {
+      for (const reading of readings) {
+        if (reading.temperatureC === null && reading.humidityPct === null) {
+          continue;
+        }
+
+        insertClimateStmt.run(
+          reading.timestampUtc,
+          reading.ip,
+          reading.deviceName ?? null,
+          reading.temperatureC,
+          reading.humidityPct,
+        );
+      }
+
+      pruneClimateStmt.run(retentionCutoffIso(retentionDays));
+    },
+
+    getClimateHistory(days = RETENTION_DAYS, ip?: string): ClimateReading[] {
+      const rows = ip
+        ? (queryClimateByIpStmt.all(retentionCutoffIso(days), ip) as unknown as ClimateHistoryRow[])
+        : (queryClimateStmt.all(retentionCutoffIso(days)) as unknown as ClimateHistoryRow[]);
+
+      return rows.map(mapClimateRow);
+    },
+
+    getLatestClimateByIp(ip: string): ClimateReading | null {
+      const row = queryLatestClimateByIpStmt.get(ip) as ClimateHistoryRow | undefined;
+      if (!row) {
+        return null;
+      }
+      return mapClimateRow(row);
+    },
+
     close() {
       db.close();
     },
@@ -135,4 +246,16 @@ export function saveHeatpumpSnapshot(snapshot: HeatpumpSnapshot) {
 
 export function getHeatpumpHistory(days = RETENTION_DAYS) {
   return historyStore().getHistory(days);
+}
+
+export function saveClimateReadings(readings: ClimateReading[]) {
+  historyStore().saveClimate(readings);
+}
+
+export function getClimateHistory(days = RETENTION_DAYS, ip?: string) {
+  return historyStore().getClimateHistory(days, ip);
+}
+
+export function getLatestClimateReading(ip: string) {
+  return historyStore().getLatestClimateByIp(ip);
 }

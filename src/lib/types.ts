@@ -33,6 +33,7 @@ export interface HeatpumpSnapshot {
 
 export interface ClimateReading {
   ip: string;
+  deviceName?: string | null;
   temperatureC: number | null;
   humidityPct: number | null;
   timestampUtc: string;

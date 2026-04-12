@@ -13,6 +13,11 @@ import { log } from "@/lib/logger";
 const CONNECT_TIMEOUT_MS = 8000;
 const RESPONSE_TIMEOUT_MS = 10000;
 
+export function extractTemperaturesNodeId(xml: string): string | null {
+  const match = xml.match(/<item\s+id='([^']+)'\s*>\s*<name>Temperaturen<\/name>/i);
+  return match?.[1] ?? null;
+}
+
 export async function fetchLuxtronicSnapshot(
   host: string,
   port: number,
@@ -22,7 +27,7 @@ export async function fetchLuxtronicSnapshot(
     const url = `ws://${host}:${port}`;
     const ws = new WebSocket(url, "Lux_WS");
 
-    let connectTimer = setTimeout(() => {
+    const connectTimer = setTimeout(() => {
       ws.terminate();
       reject(new Error("Luxtronic connect timeout"));
     }, CONNECT_TIMEOUT_MS);
@@ -30,14 +35,20 @@ export async function fetchLuxtronicSnapshot(
     let responseTimer: ReturnType<typeof setTimeout> | null = null;
     let loginDone = false;
 
-    ws.on("open", () => {
-      clearTimeout(connectTimer);
-      // Block any accidental SET/SAVE — only LOGIN and REFRESH are permitted.
-      ws.send(`LOGIN;${password}`);
+    const setResponseTimeout = (message: string) => {
+      if (responseTimer) {
+        clearTimeout(responseTimer);
+      }
       responseTimer = setTimeout(() => {
         ws.terminate();
-        reject(new Error("Luxtronic response timeout after LOGIN"));
+        reject(new Error(message));
       }, RESPONSE_TIMEOUT_MS);
+    };
+
+    ws.on("open", () => {
+      clearTimeout(connectTimer);
+      ws.send(`LOGIN;${password}`);
+      setResponseTimeout("Luxtronic response timeout after LOGIN");
     });
 
     ws.on("message", (raw: Buffer | string) => {
@@ -45,17 +56,30 @@ export async function fetchLuxtronicSnapshot(
 
       if (!loginDone) {
         loginDone = true;
-        if (responseTimer) clearTimeout(responseTimer);
-        // After a successful login the controller echoes a response; now request data.
-        responseTimer = setTimeout(() => {
-          ws.terminate();
-          reject(new Error("Luxtronic response timeout after REFRESH"));
-        }, RESPONSE_TIMEOUT_MS);
-        ws.send("REFRESH");
+
+        if (text.includes("<Content")) {
+          if (responseTimer) clearTimeout(responseTimer);
+          ws.close();
+          try {
+            resolve(parseLuxtronicXml(text));
+          } catch (err) {
+            reject(err);
+          }
+          return;
+        }
+
+        const temperaturesNodeId = extractTemperaturesNodeId(text);
+        if (!temperaturesNodeId) {
+          setResponseTimeout("Luxtronic response timeout after REFRESH");
+          ws.send("REFRESH");
+          return;
+        }
+
+        setResponseTimeout("Luxtronic response timeout after GET Temperaturen");
+        ws.send(`GET;${temperaturesNodeId}`);
         return;
       }
 
-      // Second message contains the XML payload.
       if (responseTimer) clearTimeout(responseTimer);
       ws.close();
 
