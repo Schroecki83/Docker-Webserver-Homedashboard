@@ -20,6 +20,7 @@ describe("mapPowerFlow", () => {
             P_Grid: 2.2,
             P_Load: -2937.49,
             P_Akku: -3117.62,
+            E_Day: 18420,
             rel_Autonomy: 99.92,
             rel_SelfConsumption: 100,
           },
@@ -37,9 +38,14 @@ describe("mapPowerFlow", () => {
       gridPowerW: 2.2,
       loadPowerW: 2937.49,
       batteryPowerW: -3117.62,
+      pvEnergyTodayKwh: 18.42,
+      loadEnergyTodayKwh: null,
+      gridExportTodayKwh: null,
       autonomyPct: 99.92,
       selfConsumptionPct: 100,
       batterySocPct: 89.9,
+      batteryStoredEnergyKwh: null,
+      batteryCapacityKwh: null,
       timestampUtc: "2026-04-11T11:48:02+00:00",
     });
   });

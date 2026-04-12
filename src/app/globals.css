@@ -1,6 +1,6 @@
 :root {
   color-scheme: dark;
-  --bg: #0b1117;
+  --bg: #293133;
   --panel: rgba(18, 28, 38, 0.92);
   --panel-strong: rgba(11, 19, 28, 0.95);
   --text: #e8eef5;
@@ -13,6 +13,9 @@
   --load-ring: #6faeca;
   --grid-ring: #97a0aa;
   --battery-ring: #8bc783;
+  --tab-dashboard: #a9d6e5;
+  --tab-fronius: #f4e3a3;
+  --tab-heizung: #e8b4b0;
 }
 
 * {
@@ -24,11 +27,11 @@ body {
   margin: 0;
   min-height: 100%;
   background:
-    radial-gradient(circle at top left, rgba(138, 211, 255, 0.18), transparent 28%),
-    radial-gradient(circle at top right, rgba(186, 242, 143, 0.14), transparent 24%),
-    linear-gradient(180deg, #081018 0%, #0e1721 100%);
+    radial-gradient(circle at top left, rgba(255, 255, 255, 0.06), transparent 26%),
+    radial-gradient(circle at top right, rgba(169, 214, 229, 0.08), transparent 22%),
+    linear-gradient(180deg, var(--bg) 0%, #22292b 100%);
   color: var(--text);
-  font-family: Georgia, "Times New Roman", serif;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
 }
 
 body {
@@ -38,12 +41,13 @@ body {
 .dash-shell {
   display: grid;
   min-height: 100vh;
-  place-items: start center;
-  padding: 26px;
+  place-items: stretch center;
+  padding: 24px;
 }
 
 .dash-frame {
-  width: min(1240px, 100%);
+  width: min(100%, 1840px);
+  min-height: calc(100vh - 48px);
   border: 1px solid var(--line);
   border-radius: 28px;
   padding: 28px;
@@ -52,75 +56,83 @@ body {
   box-shadow: 0 30px 80px rgba(0, 0, 0, 0.34);
 }
 
-.dash-header {
-  margin-bottom: 20px;
-}
-
-.dash-kicker {
-  margin: 0 0 8px;
-  color: var(--accent-a);
-  font-size: 0.85rem;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-}
-
-h1 {
-  margin: 0 0 10px;
-  font-size: clamp(1.9rem, 3.8vw, 3.3rem);
-  line-height: 1.04;
-}
-
-.dash-subline {
-  margin: 0;
-  color: var(--muted);
-  font-size: 1rem;
-}
-
 .tab-row {
   display: flex;
   gap: 10px;
-  margin-bottom: 16px;
+  margin-bottom: 0;
   flex-wrap: wrap;
+  align-items: flex-end;
+  position: relative;
+  z-index: 2;
 }
 
 .tab-btn {
-  border: 1px solid var(--line);
-  background: rgba(8, 14, 21, 0.75);
+  border: 1px solid transparent;
+  background: transparent;
   color: var(--muted);
-  border-radius: 999px;
-  padding: 10px 18px;
+  border-radius: 18px 18px 0 0;
+  padding: 14px 24px 12px;
   font-size: 0.95rem;
+  font-weight: 600;
   cursor: pointer;
   transition: all 160ms ease;
+  position: relative;
 }
 
 .tab-btn:hover {
   color: var(--text);
-  border-color: rgba(138, 211, 255, 0.45);
+  border-color: rgba(138, 211, 255, 0.3);
+  background: rgba(8, 14, 21, 0.35);
 }
 
 .tab-btn.active {
-  color: #052032;
-  background: linear-gradient(135deg, var(--accent-a), #74f5d5);
-  border-color: transparent;
+  color: var(--text);
+  background: var(--panel-strong);
+  border-color: var(--tab-accent, var(--text));
+  border-bottom-color: var(--panel-strong);
   font-weight: 700;
+  margin-bottom: -1px;
 }
 
 .tab-panel {
-  border: 1px solid var(--line);
+  border: 1px solid var(--tab-accent, var(--text));
   border-radius: 22px;
-  padding: 20px;
+  padding: 24px;
   background: var(--panel-strong);
+  position: relative;
+  z-index: 1;
+}
+
+.tab-dashboard {
+  --tab-accent: var(--tab-dashboard);
+}
+
+.tab-fronius {
+  --tab-accent: var(--tab-fronius);
+}
+
+.tab-heizung {
+  --tab-accent: var(--tab-heizung);
+}
+
+.tab-panel-dashboard {
+  --tab-accent: var(--tab-dashboard);
+}
+
+.tab-panel-fronius {
+  --tab-accent: var(--tab-fronius);
+}
+
+.tab-panel-heizung {
+  --tab-accent: var(--tab-heizung);
+}
+
+.dash-frame-shelly .tab-panel-dashboard {
+  border-top-left-radius: 0;
 }
 
 .tab-panel h2 {
   margin: 0 0 14px;
-}
-
-.panel-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 14px;
 }
 
 .panel-card {
@@ -142,25 +154,18 @@ h1 {
 
 .temperature-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: 14px;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 18px;
 }
 
 .temperature-metric {
   border: 1px solid rgba(159, 176, 195, 0.18);
   border-radius: 18px;
-  padding: 16px;
+  min-height: 180px;
+  padding: 20px;
   background:
     radial-gradient(circle at top right, rgba(138, 211, 255, 0.12), transparent 45%),
     rgba(8, 15, 23, 0.92);
-}
-
-.temperature-source {
-  margin: 0 0 8px;
-  color: var(--accent-a);
-  font-size: 0.78rem;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
 }
 
 .temperature-metric h4 {
@@ -242,228 +247,296 @@ h1 {
   color: var(--warn);
 }
 
-.power-card {
-  border: 1px solid var(--line);
-  border-radius: 22px;
-  background:
-    radial-gradient(circle at 80% 0%, rgba(138, 211, 255, 0.2), transparent 50%),
-    rgba(12, 20, 30, 0.9);
-  padding: 24px;
-}
-
-.power-label {
-  margin: 0;
-  text-transform: uppercase;
-  letter-spacing: 0.12em;
-  color: var(--muted);
-  font-size: 0.8rem;
-}
-
-.power-value {
-  margin: 8px 0;
-  font-size: clamp(2rem, 6vw, 4rem);
-  font-weight: 700;
-}
-
 .power-note,
 .power-time {
   margin: 4px 0;
   color: var(--muted);
 }
 
-.pv-flow-card {
-  border: 1px solid var(--line);
+.fronius-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(320px, 0.85fr);
+  gap: 22px;
+  align-items: start;
+}
+
+.fronius-realtime-card,
+.fronius-side-card {
+  border: 1px solid rgba(244, 227, 163, 0.28);
   border-radius: 22px;
-  background: #ececec;
-  color: #2e3741;
-  overflow: hidden;
+  padding: 22px;
+  background:
+    radial-gradient(circle at top left, rgba(244, 227, 163, 0.14), transparent 34%),
+    rgba(14, 22, 29, 0.92);
+  min-height: 100%;
 }
 
-.flow-heading {
+.fronius-realtime-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: baseline;
+  margin-bottom: 18px;
+}
+
+.fronius-realtime-header p {
   margin: 0;
-  text-align: center;
-  letter-spacing: 0.07em;
-  font-size: 1.1rem;
-  color: #667380;
-  border-bottom: 1px solid #d2d7dc;
-  padding: 14px 12px;
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: var(--text);
 }
 
-.flow-canvas {
-  position: relative;
-  min-height: 360px;
+.fronius-realtime-header span {
+  color: var(--muted);
+  font-size: 0.95rem;
 }
 
-.flow-lines {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-}
-
-.flow-lines line {
-  stroke: #c8ced4;
-  stroke-width: 1.2;
-}
-
-.flow-node {
-  position: absolute;
-  width: 120px;
+.fronius-realtime-grid {
   display: grid;
-  justify-items: center;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px;
 }
 
-.node-pv {
-  left: 30px;
-  top: 30px;
+.fronius-metric-card {
+  border: 1px solid rgba(159, 176, 195, 0.14);
+  border-radius: 18px;
+  padding: 18px;
+  background: rgba(8, 15, 23, 0.7);
 }
 
-.node-load {
-  right: 30px;
-  top: 30px;
+.fronius-metric-card p {
+  margin: 0 0 10px;
+  color: var(--muted);
+  font-size: 0.95rem;
 }
 
-.node-grid {
-  left: 30px;
-  bottom: 24px;
+.fronius-metric-card strong {
+  display: block;
+  margin: 0 0 10px;
+  font-size: clamp(1.7rem, 3vw, 2.5rem);
+  line-height: 1;
+  color: var(--text);
 }
 
-.node-battery {
-  right: 30px;
-  bottom: 24px;
+.fronius-metric-card span {
+  color: var(--muted);
+  font-size: 0.9rem;
 }
 
-.node-center {
-  left: 50%;
-  top: 51%;
-  transform: translate(-50%, -50%);
-  width: 140px;
+.fronius-metric-card.pv {
+  box-shadow: inset 3px 0 0 0 #f4e3a3;
 }
 
-.node-label {
-  margin: 0 0 6px;
-  font-size: 1.35rem;
-  color: #6d7782;
+.fronius-metric-card.consumption {
+  box-shadow: inset 3px 0 0 0 #a9d6e5;
 }
 
-.flow-ring {
-  width: 108px;
-  height: 108px;
-  border-radius: 50%;
+.fronius-metric-card.grid {
+  box-shadow: inset 3px 0 0 0 #c5ccd3;
+}
+
+.fronius-metric-card.battery {
+  box-shadow: inset 3px 0 0 0 #b9d9a8;
+}
+
+.fronius-day-header {
+  margin-bottom: 18px;
+}
+
+.fronius-day-header p {
+  margin: 0;
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: var(--text);
+  text-transform: capitalize;
+}
+
+.fronius-day-header span {
+  display: inline-block;
+  margin-top: 4px;
+  color: var(--tab-fronius);
+  font-size: 0.95rem;
+  letter-spacing: 0.04em;
+}
+
+.fronius-day-list {
+  display: grid;
+  gap: 14px;
+}
+
+.fronius-day-item {
+  display: grid;
+  grid-template-columns: 72px minmax(0, 1fr);
+  gap: 16px;
+  align-items: center;
+  padding: 14px 16px;
+  border: 1px solid rgba(159, 176, 195, 0.14);
+  border-radius: 18px;
+  background: rgba(8, 15, 23, 0.7);
+}
+
+.fronius-day-icon-wrap {
+  width: 72px;
+  height: 72px;
+  border-radius: 18px;
   display: grid;
   place-items: center;
-  box-shadow: inset 0 0 0 1px rgba(125, 132, 140, 0.2);
+  background: rgba(255, 255, 255, 0.06);
 }
 
-.flow-node-inner {
-  width: 80px;
-  height: 80px;
-  border-radius: 50%;
-  background: #f4f4f4;
-  border: 1px solid #d6d9dd;
-  display: grid;
-  place-items: center;
-}
-
-.flow-node-inner.center {
-  width: 86px;
-  height: 86px;
-  border-color: #c9ced2;
-}
-
-.flow-icon {
-  width: 40px;
-  height: 40px;
+.fronius-day-icon {
+  width: 38px;
+  height: 38px;
   object-fit: contain;
 }
 
-.center-icon {
-  width: 50px;
-  height: 50px;
-}
-
-.flow-dots {
-  position: absolute;
-  display: none;
-  gap: 10px;
-}
-
-.flow-dots span {
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-  opacity: 0.2;
-  transform: scale(0.7);
-}
-
-.flow-dots.active {
-  display: flex;
-  animation: flowFade 1.3s linear infinite;
-}
-
-.flow-dots.reverse {
-  animation-direction: reverse;
-}
-
-.flow-dots.yellow span {
-  background: #f2bf2a;
-}
-
-.flow-dots.blue span {
-  background: #6faeca;
-}
-
-.flow-dots.gray span {
-  background: #9aa2aa;
-}
-
-.flow-dots.green span {
-  background: #83be74;
-}
-
-.flow-pv {
-  left: 154px;
-  top: 97px;
-}
-
-.flow-load {
-  right: 154px;
-  top: 97px;
-}
-
-.flow-grid {
-  left: 154px;
-  bottom: 98px;
-}
-
-.flow-battery {
-  right: 154px;
-  bottom: 98px;
-}
-
-@keyframes flowFade {
-  0% {
-    opacity: 0.35;
-    transform: translateX(0);
-  }
-  100% {
-    opacity: 1;
-    transform: translateX(14px);
-  }
-}
-
-dt {
-  margin-bottom: 8px;
+.fronius-day-copy p {
+  margin: 0 0 8px;
   color: var(--muted);
-  font-size: 0.8rem;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  font-size: 0.95rem;
 }
 
-dd {
-  margin: 0;
-  font-size: 1rem;
-  line-height: 1.5;
+.fronius-day-value {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.fronius-day-value strong {
+  font-size: clamp(1.5rem, 2.8vw, 2.3rem);
+  line-height: 1;
+  color: var(--text);
+}
+
+.fronius-day-value span {
+  color: var(--muted);
+  font-size: 0.95rem;
+}
+
+@media (min-width: 1600px) and (min-height: 900px) {
+  .dash-shell {
+    padding: 28px;
+  }
+
+  .dash-frame {
+    min-height: calc(100vh - 56px);
+    padding: 32px;
+  }
+
+  .tab-btn {
+    padding: 16px 30px 14px;
+    font-size: 1.05rem;
+  }
+
+  .tab-panel {
+    min-height: calc(100vh - 150px);
+    padding: 28px;
+  }
+
+  .tab-panel h2 {
+    margin-bottom: 18px;
+    font-size: 2rem;
+  }
+
+  .fronius-layout {
+    grid-template-columns: minmax(0, 1.4fr) minmax(380px, 0.9fr);
+    gap: 28px;
+  }
+
+  .fronius-side-card {
+    padding: 26px;
+  }
+
+  .fronius-realtime-header p,
+  .fronius-day-header p {
+    font-size: 1.55rem;
+  }
+
+  .fronius-realtime-grid {
+    gap: 18px;
+  }
+
+  .fronius-metric-card {
+    padding: 22px;
+  }
+
+  .fronius-day-item {
+    grid-template-columns: 82px minmax(0, 1fr);
+    padding: 18px;
+  }
+
+  .fronius-day-icon-wrap {
+    width: 82px;
+    height: 82px;
+  }
+
+  .fronius-day-icon {
+    width: 44px;
+    height: 44px;
+  }
+
+  .temperature-grid {
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 20px;
+  }
+
+  .temperature-metric {
+    min-height: 220px;
+    padding: 24px;
+  }
+
+  .temperature-metric h4 {
+    font-size: 1.2rem;
+  }
+
+  .temperature-metric strong {
+    font-size: clamp(2.3rem, 2.8vw, 3.4rem);
+  }
+
+  .temperature-meta,
+  .power-note,
+  .power-time,
+  .metric-list li,
+  .state-line {
+    font-size: 1rem;
+  }
+
+  .panel-card {
+    padding: 22px;
+  }
+
+  .panel-card h3 {
+    font-size: 1.2rem;
+  }
+
+}
+
+@media (max-width: 1100px) {
+  .dash-shell {
+    padding: 18px;
+  }
+
+  .dash-frame {
+    min-height: auto;
+    padding: 20px;
+  }
+
+  .tab-panel {
+    padding: 18px;
+  }
+
+  .fronius-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .fronius-realtime-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .temperature-grid {
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  }
 }
 
 @media (max-width: 640px) {
@@ -472,52 +545,61 @@ dd {
   }
 
   .dash-frame {
+    min-height: auto;
     padding: 16px;
     border-radius: 20px;
   }
 
-  .panel-grid {
+  .tab-row {
+    gap: 8px;
+  }
+
+  .tab-btn {
+    padding: 12px 16px 10px;
+    font-size: 0.9rem;
+  }
+
+  .tab-panel {
+    padding: 16px;
+  }
+
+  .fronius-side-card {
+    padding: 16px;
+  }
+
+  .fronius-realtime-grid {
     grid-template-columns: 1fr;
+    gap: 12px;
   }
 
-  .flow-canvas {
-    min-height: 600px;
+  .fronius-metric-card {
+    padding: 14px;
   }
 
-  .node-pv,
-  .node-load,
-  .node-grid,
-  .node-battery {
-    left: 50%;
-    right: auto;
-    transform: translateX(-50%);
+  .fronius-day-item {
+    grid-template-columns: 56px minmax(0, 1fr);
+    gap: 12px;
+    padding: 12px;
   }
 
-  .node-pv {
-    top: 20px;
+  .fronius-day-icon-wrap {
+    width: 56px;
+    height: 56px;
+    border-radius: 14px;
   }
 
-  .node-load {
-    top: 150px;
+  .fronius-day-icon {
+    width: 28px;
+    height: 28px;
   }
 
-  .node-center {
-    top: 300px;
-    transform: translate(-50%, -50%);
+  .temperature-grid {
+    grid-template-columns: 1fr;
+    gap: 12px;
   }
 
-  .node-grid {
-    top: 370px;
-    bottom: auto;
-  }
-
-  .node-battery {
-    top: 500px;
-    bottom: auto;
-  }
-
-  .flow-lines,
-  .flow-dots {
-    display: none;
+  .temperature-metric {
+    min-height: auto;
+    padding: 16px;
   }
 }

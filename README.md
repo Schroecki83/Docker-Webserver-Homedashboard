@@ -16,3 +16,7 @@ Phase 1 scaffold for a Raspberry Pi home dashboard integrating Fronius, Shelly L
 - Core telemetry types
 - Fronius client and mapper
 - Initial tests
+
+## Documentation
+
+- Fronius field and endpoint mapping: [docs/fronius-mapping.md](docs/fronius-mapping.md)

@@ -5,21 +5,12 @@ import type { ClimateReading, DashboardSnapshot, ElectricalMetrics, HeatpumpSnap
 
 type ActiveTab = "shelly" | "pv" | "heatpump";
 
-interface SolarwebPowerResponse {
-  currentPowerW: number;
-  display: string;
-  timestampUtc: string;
-  sourceLabel: "Aktuelle Leistung";
-}
-
 const POLL_MS = 30_000;
 
 export function DashboardClient() {
   const [activeTab, setActiveTab] = useState<ActiveTab>("shelly");
   const [snapshot, setSnapshot] = useState<DashboardSnapshot | null>(null);
   const [snapshotError, setSnapshotError] = useState<string | null>(null);
-  const [pv, setPv] = useState<SolarwebPowerResponse | null>(null);
-  const [pvError, setPvError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -27,10 +18,7 @@ export function DashboardClient() {
 
     const load = async () => {
       try {
-        const [snapshotRes, pvRes] = await Promise.all([
-          fetch("/api/snapshot", { cache: "no-store" }),
-          fetch("/api/solarweb/fronius-power", { cache: "no-store" }),
-        ]);
+        const snapshotRes = await fetch("/api/snapshot", { cache: "no-store" });
 
         if (!snapshotRes.ok) {
           throw new Error("Snapshot konnte nicht geladen werden");
@@ -40,19 +28,6 @@ export function DashboardClient() {
         if (!cancelled) {
           setSnapshot(snapshotData);
           setSnapshotError(null);
-        }
-
-        if (!pvRes.ok) {
-          const body = (await pvRes.json().catch(() => null)) as { error?: string } | null;
-          if (!cancelled) {
-            setPvError(body?.error ?? "PV Daten konnten nicht geladen werden");
-          }
-        } else {
-          const pvData = (await pvRes.json()) as SolarwebPowerResponse;
-          if (!cancelled) {
-            setPv(pvData);
-            setPvError(null);
-          }
         }
       } catch (err) {
         const message = err instanceof Error ? err.message : "Unbekannter Fehler";
@@ -80,38 +55,36 @@ export function DashboardClient() {
 
   return (
     <main className="dash-shell">
-      <section className="dash-frame">
-        <header className="dash-header">
-          <p className="dash-kicker">Home Dashboard</p>
-          <h1>Phase 3 - Live Tabs</h1>
-          <p className="dash-subline">Tab 1: Temperatur | Tab 2: PV | Tab 3: Heatpump</p>
-        </header>
-
+      <section className={`dash-frame dash-frame-${activeTab}`}>
         <nav className="tab-row" aria-label="Dashboard Tabs">
           <button
             type="button"
-            className={activeTab === "shelly" ? "tab-btn active" : "tab-btn"}
+            className={activeTab === "shelly" ? "tab-btn tab-dashboard active" : "tab-btn tab-dashboard"}
             onClick={() => setActiveTab("shelly")}
           >
-            Tab 1 - Temperatur
-          </button>
-          <button type="button" className={activeTab === "pv" ? "tab-btn active" : "tab-btn"} onClick={() => setActiveTab("pv")}>
-            Tab 2 - PV
+            Dashboard
           </button>
           <button
             type="button"
-            className={activeTab === "heatpump" ? "tab-btn active" : "tab-btn"}
+            className={activeTab === "pv" ? "tab-btn tab-fronius active" : "tab-btn tab-fronius"}
+            onClick={() => setActiveTab("pv")}
+          >
+            Fronius
+          </button>
+          <button
+            type="button"
+            className={activeTab === "heatpump" ? "tab-btn tab-heizung active" : "tab-btn tab-heizung"}
             onClick={() => setActiveTab("heatpump")}
           >
-            Tab 3 - Heatpump
+            Heizung
           </button>
         </nav>
 
         {isLoading ? <p className="state-line">Lade Live-Daten...</p> : null}
 
         {activeTab === "shelly" ? (
-          <section className="tab-panel" aria-live="polite">
-            <h2>Temperatur</h2>
+          <section className="tab-panel tab-panel-dashboard" aria-live="polite">
+            <h2>Dashboard</h2>
             {snapshotError ? <p className="state-line error">{snapshotError}</p> : null}
 
             <article className="panel-card temperature-panel">
@@ -122,7 +95,6 @@ export function DashboardClient() {
                 <div className="temperature-grid">
                   {temperatureRows.map((row) => (
                     <article key={row.key} className="temperature-metric">
-                      <p className="temperature-source">{row.source}</p>
                       <h4>{row.label}</h4>
                       <strong>{formatTemp(row.temperatureC)}</strong>
                       {row.humidityPct !== null ? <p className="temperature-meta">Luftfeuchte {formatHumidity(row.humidityPct)}</p> : null}
@@ -136,17 +108,17 @@ export function DashboardClient() {
             </article>
           </section>
         ) : activeTab === "pv" ? (
-          <section className="tab-panel" aria-live="polite">
+          <section className="tab-panel tab-panel-fronius" aria-live="polite">
             <h2>PV Fronius</h2>
-            {pvError ? <p className="state-line error">{pvError}</p> : null}
+            {snapshotError ? <p className="state-line error">{snapshotError}</p> : null}
 
-            <PvFlowChart electrical={snapshot?.electrical} pv={pv} />
-
-            <p className="power-note">Quelle: Solarweb PublicDisplay</p>
-            <p className="power-time">{pv ? `Stand: ${formatTime(pv.timestampUtc)}` : "Kein Zeitstempel"}</p>
+            <div className="fronius-layout">
+              <FroniusRealtimePanel electrical={snapshot?.electrical} />
+              <FroniusDailyPanel electrical={snapshot?.electrical} />
+            </div>
           </section>
         ) : (
-          <section className="tab-panel" aria-live="polite">
+          <section className="tab-panel tab-panel-heizung" aria-live="polite">
             <h2>Heatpump - Full Information</h2>
             {snapshotError ? <p className="state-line error">{snapshotError}</p> : null}
 
@@ -175,120 +147,154 @@ export function DashboardClient() {
   );
 }
 
-function PvFlowChart({ electrical, pv }: { electrical?: ElectricalMetrics; pv: SolarwebPowerResponse | null }) {
-  const pvPowerW = pv?.currentPowerW ?? electrical?.pvPowerW ?? 0;
+function FroniusRealtimePanel({ electrical }: { electrical?: ElectricalMetrics }) {
+  const pvPowerW = electrical?.pvPowerW ?? 0;
   const loadPowerW = electrical?.loadPowerW ?? 0;
   const gridPowerW = electrical?.gridPowerW ?? 0;
   const batteryPowerW = electrical?.batteryPowerW ?? 0;
   const batterySoc = electrical?.batterySocPct ?? null;
-
-  const pvPct = toPct(pvPowerW, 12000);
-  const loadPct = toPct(loadPowerW, 12000);
-  const gridPct = toPct(Math.abs(gridPowerW), 6000);
-  const batteryPct = batterySoc ?? toPct(Math.abs(batteryPowerW), 5000);
+  const batteryCapacity = electrical?.batteryCapacityKwh ?? null;
 
   return (
-    <article className="pv-flow-card" aria-label="PV Energiefluss">
-      <p className="flow-heading">AKTUELLE LEISTUNG</p>
+    <article className="fronius-realtime-card">
+      <div className="fronius-realtime-header">
+        <p>Realtime</p>
+        <span>{electrical?.timestampUtc ? formatTime(electrical.timestampUtc) : "Kein Zeitstempel"}</span>
+      </div>
 
-      <div className="flow-canvas">
-        <svg className="flow-lines" viewBox="0 0 500 330" aria-hidden="true">
-          <line x1="130" y1="90" x2="250" y2="165" />
-          <line x1="370" y1="90" x2="250" y2="165" />
-          <line x1="130" y1="250" x2="250" y2="165" />
-          <line x1="370" y1="250" x2="250" y2="165" />
-        </svg>
-
-        <FlowDots className="flow-pv" colorClass="yellow" active={pvPowerW > 5} reverse={false} />
-        <FlowDots className="flow-load" colorClass="blue" active={loadPowerW > 5} reverse={false} />
-        <FlowDots className="flow-grid" colorClass="gray" active={Math.abs(gridPowerW) > 5} reverse={gridPowerW > 0} />
-        <FlowDots className="flow-battery" colorClass="green" active={Math.abs(batteryPowerW) > 5} reverse={batteryPowerW < 0} />
-
-        <FlowNode
-          className="node-pv"
-          label={formatPower(pvPowerW)}
-          ringColor="var(--pv-ring)"
-          ringPct={pvPct}
-          iconSrc="/images/pv.svg"
-          iconAlt="PV"
+      <div className="fronius-realtime-grid">
+        <RealtimeMetricCard
+          label="PV Production"
+          value={formatPower(pvPowerW)}
+          detail={pvPowerW > 0 ? "Produktion aktiv" : "Keine Produktion"}
+          accentClass="pv"
         />
-
-        <FlowNode
-          className="node-load"
-          label={formatPower(loadPowerW)}
-          ringColor="var(--load-ring)"
-          ringPct={loadPct}
-          iconSrc="/images/consumption.svg"
-          iconAlt="Consumption"
+        <RealtimeMetricCard
+          label="Consumption"
+          value={formatPower(loadPowerW)}
+          detail={loadPowerW > 0 ? "Aktueller Verbrauch" : "Kein Verbrauch"}
+          accentClass="consumption"
         />
-
-        <FlowNode
-          className="node-grid"
-          label={gridPowerW >= 0 ? `${formatPower(Math.abs(gridPowerW))} Bezug` : `${formatPower(Math.abs(gridPowerW))} Einsp.`}
-          ringColor="var(--grid-ring)"
-          ringPct={gridPct}
-          iconSrc="/images/grid.svg"
-          iconAlt="Grid"
+        <RealtimeMetricCard
+          label="Grid"
+          value={formatSignedPower(gridPowerW)}
+          detail={gridPowerW >= 0 ? "Netzbezug" : "Einspeisung"}
+          accentClass="grid"
         />
-
-        <FlowNode
-          className="node-battery"
-          label={batterySoc !== null ? `${Math.round(batterySoc)} %` : formatPower(Math.abs(batteryPowerW))}
-          ringColor="var(--battery-ring)"
-          ringPct={batteryPct}
-          iconSrc="/images/battery_25.svg"
-          iconAlt="Battery"
+        <RealtimeMetricCard
+          label="Battery"
+          value={formatSignedPower(batteryPowerW)}
+          detail={formatBatteryDetail(batterySoc, batteryCapacity)}
+          accentClass="battery"
         />
-
-        <div className="flow-node node-center" aria-hidden="true">
-          <div className="flow-node-inner center">
-            <img src="/images/ICON_GEN24.svg" alt="Inverter" className="flow-icon center-icon" />
-          </div>
-        </div>
       </div>
     </article>
   );
 }
 
-function FlowDots({ className, colorClass, active, reverse }: { className: string; colorClass: string; active: boolean; reverse: boolean }) {
+function RealtimeMetricCard({
+  label,
+  value,
+  detail,
+  accentClass,
+}: {
+  label: string;
+  value: string;
+  detail: string;
+  accentClass: string;
+}) {
   return (
-    <div className={`flow-dots ${className} ${colorClass} ${active ? "active" : ""} ${reverse ? "reverse" : ""}`} aria-hidden="true">
-      <span />
-      <span />
-      <span />
-    </div>
+    <article className={`fronius-metric-card ${accentClass}`}>
+      <p>{label}</p>
+      <strong>{value}</strong>
+      <span>{detail}</span>
+    </article>
   );
 }
 
-function FlowNode({
-  className,
-  label,
-  ringColor,
-  ringPct,
+function FroniusDailyPanel({ electrical }: { electrical?: ElectricalMetrics }) {
+  const batteryValue =
+    electrical?.batteryStoredEnergyKwh !== null && electrical?.batteryStoredEnergyKwh !== undefined
+      ? formatEnergy(electrical.batteryStoredEnergyKwh, 1)
+      : electrical?.batterySocPct !== null && electrical?.batterySocPct !== undefined
+        ? `${Math.round(electrical.batterySocPct)} %`
+        : "--";
+  const batteryUnit =
+    electrical?.batteryStoredEnergyKwh !== null && electrical?.batteryStoredEnergyKwh !== undefined
+      ? formatBatteryUnit(electrical.batterySocPct ?? null, electrical.batteryCapacityKwh ?? null)
+      : electrical?.batterySocPct !== null && electrical?.batterySocPct !== undefined
+        ? "SOC"
+        : "";
+
+  return (
+    <aside className="fronius-side-card">
+      <div className="fronius-day-header">
+        <p>{formatDateLabel(electrical?.timestampUtc)}</p>
+        <span>Tageswerte</span>
+      </div>
+
+      <div className="fronius-day-list">
+        <DayMetricRow
+          iconSrc="/images/pv.svg"
+          iconAlt="PV"
+          label="PV Produktion"
+          value={formatEnergy(electrical?.pvEnergyTodayKwh ?? null)}
+          unit="kWh"
+        />
+        <DayMetricRow
+          iconSrc="/images/consumption.svg"
+          iconAlt="Verbrauch"
+          label="Stromverbrauch"
+          value={formatEnergy(electrical?.loadEnergyTodayKwh ?? null)}
+          unit="kWh"
+        />
+        <DayMetricRow
+          iconSrc="/images/battery_25.svg"
+          iconAlt="Batterie"
+          label="Batterieladung"
+          value={batteryValue}
+          unit={batteryUnit}
+        />
+        <DayMetricRow
+          iconSrc="/images/grid.svg"
+          iconAlt="Netz"
+          label="Stromexport"
+          value={formatEnergy(electrical?.gridExportTodayKwh ?? null)}
+          unit="kWh"
+        />
+      </div>
+
+      <p className="power-time">{electrical?.timestampUtc ? `Stand: ${formatTime(electrical.timestampUtc)}` : "Kein Zeitstempel"}</p>
+    </aside>
+  );
+}
+
+function DayMetricRow({
   iconSrc,
   iconAlt,
+  label,
+  value,
+  unit,
 }: {
-  className: string;
-  label: string;
-  ringColor: string;
-  ringPct: number;
   iconSrc: string;
   iconAlt: string;
+  label: string;
+  value: string;
+  unit: string;
 }) {
   return (
-    <div className={`flow-node ${className}`}>
-      <p className="node-label">{label}</p>
-      <div
-        className="flow-ring"
-        style={{
-          background: `conic-gradient(${ringColor} ${ringPct}%, rgba(0, 0, 0, 0) ${ringPct}% 100%)`,
-        }}
-      >
-        <div className="flow-node-inner">
-          <img src={iconSrc} alt={iconAlt} className="flow-icon" />
+    <article className="fronius-day-item">
+      <div className="fronius-day-icon-wrap">
+        <img src={iconSrc} alt={iconAlt} className="fronius-day-icon" />
+      </div>
+      <div className="fronius-day-copy">
+        <p>{label}</p>
+        <div className="fronius-day-value">
+          <strong>{value}</strong>
+          {unit ? <span>{unit}</span> : null}
         </div>
       </div>
-    </div>
+    </article>
   );
 }
 
@@ -313,7 +319,6 @@ function mapHeatpumpRows(heatpump: HeatpumpSnapshot | undefined) {
 function mapTemperatureRows(heatpump: HeatpumpSnapshot | undefined, climate: ClimateReading[]) {
   const rows = climate.map((item) => ({
     key: item.ip,
-    source: "Shelly H&T",
     label: item.deviceName ?? item.ip,
     temperatureC: item.temperatureC,
     humidityPct: item.humidityPct,
@@ -323,7 +328,6 @@ function mapTemperatureRows(heatpump: HeatpumpSnapshot | undefined, climate: Cli
   if (heatpump) {
     rows.unshift({
       key: "luxtronic-outdoor",
-      source: "Luxtronic",
       label: "Aussentemperatur",
       temperatureC: heatpump.aussentemperatur_c,
       humidityPct: null,
@@ -346,6 +350,32 @@ function formatHumidity(value: number | null) {
     return "--";
   }
   return `${value.toFixed(0)} %`;
+}
+
+function formatEnergy(value: number | null, decimals = 2) {
+  if (value === null || Number.isNaN(value)) {
+    return "--";
+  }
+
+  return value.toLocaleString("de-AT", {
+    minimumFractionDigits: decimals,
+    maximumFractionDigits: decimals,
+  });
+}
+
+function formatDateLabel(timestampUtc?: string) {
+  const date = timestampUtc ? new Date(timestampUtc) : new Date();
+  if (Number.isNaN(date.getTime())) {
+    return "Heute";
+  }
+
+  return new Intl.DateTimeFormat("de-AT", {
+    weekday: "long",
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    timeZone: "Europe/Vienna",
+  }).format(date);
 }
 
 function formatTime(value: string) {
@@ -378,15 +408,47 @@ function StaleBadge({ timestampUtc, hasData }: { timestampUtc: string; hasData: 
   return <span className="stale-badge cached"> letzter Wert {label}</span>;
 }
 
-function toPct(value: number, max: number) {
-  const bounded = Math.max(0, Math.min(100, (value / max) * 100));
-  return Number.isFinite(bounded) ? bounded : 0;
-}
-
 function formatPower(valueW: number) {
   const absValue = Math.abs(valueW);
   if (absValue >= 1000) {
     return `${(absValue / 1000).toFixed(2)} kW`;
   }
   return `${Math.round(absValue)} W`;
+}
+
+function formatSignedPower(valueW: number) {
+  const prefix = valueW < 0 ? "-" : "+";
+  return `${prefix}${formatPower(valueW)}`;
+}
+
+function formatBatteryDetail(soc: number | null, capacityKwh: number | null) {
+  if (soc !== null && capacityKwh !== null) {
+    return `${Math.round(soc)}% von ${formatEnergy(capacityKwh, 1)} kWh`;
+  }
+
+  if (soc !== null) {
+    return `SOC ${Math.round(soc)}%`;
+  }
+
+  if (capacityKwh !== null) {
+    return `Kapazitaet ${formatEnergy(capacityKwh, 1)} kWh`;
+  }
+
+  return "Keine Batteriedaten";
+}
+
+function formatBatteryUnit(soc: number | null, capacityKwh: number | null) {
+  if (soc !== null && capacityKwh !== null) {
+    return `kWh / ${formatEnergy(capacityKwh, 1)} kWh (${Math.round(soc)}%)`;
+  }
+
+  if (soc !== null) {
+    return `kWh (${Math.round(soc)}%)`;
+  }
+
+  if (capacityKwh !== null) {
+    return `kWh / ${formatEnergy(capacityKwh, 1)} kWh`;
+  }
+
+  return "kWh";
 }

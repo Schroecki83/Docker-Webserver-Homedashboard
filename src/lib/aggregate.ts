@@ -32,7 +32,7 @@ async function settle<T>(label: string, fn: () => Promise<T>): Promise<{ ok: tru
 }
 
 export async function buildSnapshot(): Promise<DashboardSnapshot> {
-  const { FRONIUS_BASE_URL, SHELLY_HT_DEVICES, SHELLY_GEN1_DEVICES, LUXTRONIC_HOST, LUXTRONIC_PORT, LUXTRONIC_PASSWORD } = env();
+  const { SHELLY_HT_DEVICES, SHELLY_GEN1_DEVICES, LUXTRONIC_HOST, LUXTRONIC_PORT, LUXTRONIC_PASSWORD } = env();
 
   const [froniusResult, shellyHtResult, shelly25Result, luxtronicResult] = await Promise.all([
     settle("fronius", fetchPowerFlow),
