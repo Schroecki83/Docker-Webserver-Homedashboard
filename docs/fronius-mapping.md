@@ -10,7 +10,7 @@ This document defines how Fronius API payloads are mapped into the dashboard ele
 | gridPowerW | Site.P_Grid |
 | loadPowerW | abs(Site.P_Load) |
 | batteryPowerW | Site.P_Akku |
-| pvEnergyTodayKwh | Site.E_Day, fallback Inverters[0].E_Day |
+| pvEnergyTodayKwh | derived from `TOTAL_ENERGY` daily delta baseline |
 | autonomyPct | Site.rel_Autonomy |
 | selfConsumptionPct | Site.rel_SelfConsumption |
 | batterySocPct | Inverters[0].SOC (fallback only) |
@@ -21,12 +21,24 @@ Endpoint:
 
 ## Daily Energy Mapping
 
-Archive channels are read from:
-- GET /solar_api/v1/GetArchiveData.cgi?Scope=System&StartDate=YYYY-MM-DD&EndDate=YYYY-MM-DD&Channel=EnergyReal_WAC_Plus_Absolute&Channel=EnergyReal_WAC_Minus_Absolute
+Daily values are derived from local cumulative counters, because some GEN24 installations return `null` for `E_Day`/`DAY_ENERGY`.
 
-Channel mapping:
-- gridImportTodayKwh: EnergyReal_WAC_Plus_Absolute
-- gridExportTodayKwh: EnergyReal_WAC_Minus_Absolute
+Read each cycle:
+- GET /solar_api/v1/GetMeterRealtimeData.cgi?Scope=System
+	- `EnergyReal_WAC_Plus_Absolute` (grid import lifetime Wh)
+	- `EnergyReal_WAC_Minus_Absolute` (grid export lifetime Wh)
+- GET /solar_api/v1/GetInverterRealtimeData.cgi?Scope=Device&DeviceId=1&DataCollection=CommonInverterData
+	- `TOTAL_ENERGY.Value` (PV lifetime Wh)
+
+Daily baseline logic:
+- First successful sample per UTC day is stored in SQLite table `fronius_daily_baseline`.
+- Current day values are calculated as `current_lifetime - baseline_lifetime`.
+- Baseline rows are pruned to 24h retention.
+
+Mapped daily metrics:
+- `gridImportTodayKwh`
+- `gridExportTodayKwh`
+- `pvEnergyTodayKwh`
 
 Computed metric:
 - loadEnergyTodayKwh = max(0, pvEnergyTodayKwh - gridExportTodayKwh + gridImportTodayKwh)

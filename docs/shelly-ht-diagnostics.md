@@ -1,84 +1,69 @@
 # Shelly H&T Diagnostics
 
-If your Shelly H&T sensors are not sending updates to the dashboard, use this guide to diagnose the issue.
+This guide is for the current cloud-only Shelly H&T integration.
 
-## Webhook URL Configuration
+## Important Changes
 
-Each Shelly H&T sensor must be configured in its web UI:
-1. Go to **Settings → Actions → Sensor Update Report**
-2. Enter the webhook URL:
-   ```
-   http://192.168.70.26:3001/api/shelly/ht/report?ip={ip}&temp={tC}&hum={hum}&name={id}
-   ```
+- Removed: `/api/shelly/ht/report` webhook endpoint
+- Removed: local Shelly H&T LAN polling provider
+- Removed: `/api/climate/history` endpoint
 
-**Important:** Use `name={id}` to pass the device identifier, not `id=`.
+If you are still testing webhook URLs, those requests will not be used by the current dashboard.
 
-## Monitor Webhook Calls
+## Quick Health Checks
 
-View webhook calls in real-time with:
+1. Check snapshot climate payload:
 
 ```bash
-# Tail the last 50 lines of logs and watch for new shelly.ht.report events
-docker compose logs -f --tail=50 | grep -E "shelly\.ht\.report|Sensor Update"
-
-# Or see all recent logs (last 20 lines)
-docker compose logs --tail=20
+curl -s "http://<host>:3001/api/snapshot" | grep -A30 '"climate"'
 ```
 
-You should see log lines like:
-```json
-{"level":"info","message":"shelly.ht.report_received","details":{"ip":"192.168.70.34","name":"Wohnzimmer","tempRaw":"25.5","humRaw":"60"},"timestamp":"2026-04-19T10:15:30.000Z"}
-{"level":"info","message":"shelly.ht.report_cached","details":{"ip":"192.168.70.34","name":"Wohnzimmer","temperatureC":25.5,"humidityPct":60},"timestamp":"2026-04-19T10:15:30.000Z"}
-```
-
-## Troubleshooting
-
-### No webhook calls received
-
-1. **Check if devices are powered on**
-   - Access the Shelly web UI at its IP (e.g., http://192.168.70.34)
-   - If unreachable, the device is likely asleep or offline.
-
-2. **Verify webhook URL is saved**
-   - In the Shelly web UI, go to **Settings → Actions → Sensor Update Report**
-   - Confirm the URL is exactly: `http://192.168.70.26:3001/api/shelly/ht/report?ip={ip}&temp={tC}&hum={hum}&name={id}`
-   - The device must be set to wake and send reports (usually configurable in Power Settings or Sleep Timer)
-
-3. **Test connectivity to the Pi**
-   - From any device on your network, try: `ping 192.168.70.26`
-   - Or test the endpoint manually:
-     ```bash
-     curl "http://192.168.70.26:3001/api/shelly/ht/report?ip=192.168.70.34&temp=25.5&hum=60&name=Test"
-     ```
-
-4. **Check Shelly sleep/wake interval**
-   - Shelly devices often have a configurable wake period (default may be very long).
-   - In the Shelly web UI, check **Settings → Device** for sleep or power management settings.
-   - Reduce the wake/report interval to 5–10 minutes if it's longer.
-
-5. **Manually trigger a report**
-   - Access the Shelly web UI and look for a "Test" or "Send Report" button.
-   - Or press the Shelly's physical button to wake it and trigger an immediate report.
-
-### Webhook calls received but data not updating
-
-1. **Check the dashboard snapshot**
-   - Run: `curl -s http://192.168.70.26:3001/api/snapshot | grep -A5 192.168.70.34`
-   - Look for the IP and verify `timestampUtc` is recent.
-
-2. **Verify parameter names**
-   - The logs should show the exact parameters received.
-   - Ensure the Shelly is sending `temp` (or `tC`), `hum`, and `name` (or `id`).
-
-3. **Check recent logs for errors**
-   - Look for `shelly.ht.report_rejected` entries, which will indicate why a report was rejected.
-
-## Historical Data
-
-To retrieve historical temperature and humidity data:
+2. Check stream endpoint delivers updates:
 
 ```bash
-curl "http://192.168.70.26:3001/api/climate/history?ip=192.168.70.34&days=7"
+curl -N "http://<host>:3001/api/stream"
 ```
 
-This returns the last 7 days of readings for that device.
+3. Check Shelly logs:
+
+```bash
+docker logs home-dashboard 2>&1 | grep "shelly.cloud"
+```
+
+## Most Common Failure Cases
+
+### `shelly.cloud.no_token`
+
+`SHELLY_CLOUD_AUTH_TOKEN` is missing in container env.
+
+### `shelly.cloud.api_error`
+
+Cloud endpoint or token invalid. Verify:
+
+```bash
+SHELLY_CLOUD_API_URL=https://shelly-146-eu.shelly.cloud
+```
+
+### Climate array empty despite valid token
+
+- Shelly account may not expose H&T values for current devices.
+- Device may be present but without humidity (`hum`) data.
+- Device is filtered out when not recognized as H&T payload.
+
+## Direct Cloud API Check
+
+```bash
+curl -s "${SHELLY_CLOUD_API_URL}/device/all_status?auth_key=${SHELLY_CLOUD_AUTH_TOKEN}" | python3 -m json.tool | head -120
+```
+
+Look for `data.devices_status` entries containing both:
+- `tmp`
+- `hum`
+
+## Device Naming
+
+Dashboard device labels are resolved in this order:
+1. Shelly cloud `name`
+2. Local override map by IP
+3. Local override map by device ID
+4. Raw IP/device ID
