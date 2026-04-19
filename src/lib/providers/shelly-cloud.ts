@@ -12,8 +12,6 @@ import type { ClimateReading } from "@/lib/types";
 import { env } from "@/lib/env";
 import { log } from "@/lib/logger";
 
-const SHELLY_CLOUD_API_URL = "https://iot.shelly.cloud/iot";
-
 interface ShellyCloudDevice {
   id: string;
   name: string;
@@ -37,12 +35,13 @@ function isShellyError(obj: unknown): obj is ShellyCloudApiError {
 
 export async function fetchShellyCloudDevices(): Promise<ClimateReading[]> {
   const token = env().SHELLY_CLOUD_AUTH_TOKEN;
+  const apiUrl = env().SHELLY_CLOUD_API_URL;
   if (!token) {
     return [];
   }
 
   try {
-    const response = await fetch(`${SHELLY_CLOUD_API_URL}/devices`, {
+    const response = await fetch(`${apiUrl}/devices`, {
       method: "GET",
       headers: {
         Authorization: `Bearer ${token}`,

@@ -15,6 +15,7 @@ const envSchema = z.object({
   LUXTRONIC_PASSWORD: z.string().min(1),
   SHELLY_HT_DEVICES: csvList,
   SHELLY_GEN1_DEVICES: csvList,
+  SHELLY_CLOUD_API_URL: z.string().url().default("https://iot.shelly.cloud/iot"),
   SHELLY_CLOUD_AUTH_TOKEN: z.string().default(""),
   PORT: z.coerce.number().int().positive().default(3001),
 });
