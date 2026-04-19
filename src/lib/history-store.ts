@@ -11,6 +11,11 @@ function retentionCutoffIso(days: number): string {
   return new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString();
 }
 
+/** ISO date string in local-ish terms (UTC day boundary). */
+export function todayUtcDate(): string {
+  return new Date().toISOString().slice(0, 10);
+}
+
 interface HeatpumpHistoryRow {
   timestamp_utc: string;
   vorlauf_c: number | null;
@@ -84,6 +89,16 @@ export function createHistoryStore(dbPath: string) {
       temperature_c REAL,
       humidity_pct REAL,
       PRIMARY KEY (timestamp_utc, ip)
+    )
+  `);
+
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS fronius_daily_baseline (
+      date TEXT PRIMARY KEY,
+      meter_import_wh REAL NOT NULL,
+      meter_export_wh REAL NOT NULL,
+      inverter_total_wh REAL NOT NULL,
+      recorded_at TEXT NOT NULL
     )
   `);
 
@@ -169,6 +184,17 @@ export function createHistoryStore(dbPath: string) {
   const pruneStmt = db.prepare(`DELETE FROM heatpump_history WHERE timestamp_utc < ?`);
   const pruneClimateStmt = db.prepare(`DELETE FROM shelly_ht_history WHERE timestamp_utc < ?`);
 
+  const insertBaselineStmt = db.prepare(`
+    INSERT OR IGNORE INTO fronius_daily_baseline (date, meter_import_wh, meter_export_wh, inverter_total_wh, recorded_at)
+    VALUES (?, ?, ?, ?, ?)
+  `);
+  const getBaselineStmt = db.prepare(`
+    SELECT meter_import_wh, meter_export_wh, inverter_total_wh FROM fronius_daily_baseline WHERE date = ?
+  `);
+  const pruneBaselineStmt = db.prepare(`
+    DELETE FROM fronius_daily_baseline WHERE recorded_at < ?
+  `);
+
   return {
     save(snapshot: HeatpumpSnapshot, retentionDays = RETENTION_DAYS) {
       insertStmt.run(
@@ -225,6 +251,18 @@ export function createHistoryStore(dbPath: string) {
       return mapClimateRow(row);
     },
 
+    /** Insert baseline for today only if none exists yet (INSERT OR IGNORE). */
+    ensureFroniusDailyBaseline(date: string, meterImportWh: number, meterExportWh: number, inverterTotalWh: number) {
+      insertBaselineStmt.run(date, meterImportWh, meterExportWh, inverterTotalWh, new Date().toISOString());
+      pruneBaselineStmt.run(retentionCutoffIso(1));
+    },
+
+    getFroniusDailyBaseline(date: string): { meterImportWh: number; meterExportWh: number; inverterTotalWh: number } | null {
+      const row = getBaselineStmt.get(date) as { meter_import_wh: number; meter_export_wh: number; inverter_total_wh: number } | undefined;
+      if (!row) return null;
+      return { meterImportWh: row.meter_import_wh, meterExportWh: row.meter_export_wh, inverterTotalWh: row.inverter_total_wh };
+    },
+
     close() {
       db.close();
     },
@@ -258,4 +296,12 @@ export function getClimateHistory(days = RETENTION_DAYS, ip?: string) {
 
 export function getLatestClimateReading(ip: string) {
   return historyStore().getLatestClimateByIp(ip);
+}
+
+export function ensureFroniusDailyBaseline(date: string, meterImportWh: number, meterExportWh: number, inverterTotalWh: number) {
+  historyStore().ensureFroniusDailyBaseline(date, meterImportWh, meterExportWh, inverterTotalWh);
+}
+
+export function getFroniusDailyBaseline(date: string) {
+  return historyStore().getFroniusDailyBaseline(date);
 }

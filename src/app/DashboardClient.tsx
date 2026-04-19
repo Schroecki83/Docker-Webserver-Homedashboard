@@ -5,8 +5,6 @@ import type { ClimateReading, DashboardSnapshot, ElectricalMetrics, HeatpumpSnap
 
 type ActiveTab = "shelly" | "pv" | "heatpump";
 
-const POLL_MS = 30_000;
-
 export function DashboardClient() {
   const [activeTab, setActiveTab] = useState<ActiveTab>("shelly");
   const [snapshot, setSnapshot] = useState<DashboardSnapshot | null>(null);
@@ -14,39 +12,32 @@ export function DashboardClient() {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    let cancelled = false;
+    const es = new EventSource("/api/stream");
 
-    const load = async () => {
+    es.onmessage = (e) => {
       try {
-        const snapshotRes = await fetch("/api/snapshot", { cache: "no-store" });
-
-        if (!snapshotRes.ok) {
-          throw new Error("Snapshot konnte nicht geladen werden");
-        }
-
-        const snapshotData = (await snapshotRes.json()) as DashboardSnapshot;
-        if (!cancelled) {
-          setSnapshot(snapshotData);
-          setSnapshotError(null);
-        }
-      } catch (err) {
-        const message = err instanceof Error ? err.message : "Unbekannter Fehler";
-        if (!cancelled) {
-          setSnapshotError(message);
-        }
+        const data = JSON.parse(e.data as string) as DashboardSnapshot;
+        setSnapshot(data);
+        setSnapshotError(null);
+      } catch {
+        setSnapshotError("Ungültige Antwort vom Server");
       } finally {
-        if (!cancelled) {
-          setIsLoading(false);
-        }
+        setIsLoading(false);
       }
     };
 
-    load();
-    const timer = window.setInterval(load, POLL_MS);
+    es.addEventListener("error", (e) => {
+      try {
+        const data = JSON.parse((e as MessageEvent).data as string) as { error: string };
+        setSnapshotError(data.error);
+      } catch {
+        // connection error — browser will auto-reconnect
+      }
+      setIsLoading(false);
+    });
 
     return () => {
-      cancelled = true;
-      window.clearInterval(timer);
+      es.close();
     };
   }, []);
 
@@ -154,6 +145,8 @@ function FroniusRealtimePanel({ electrical }: { electrical?: ElectricalMetrics }
   const batteryPowerW = electrical?.batteryPowerW ?? 0;
   const batterySoc = electrical?.batterySocPct ?? null;
   const batteryCapacity = electrical?.batteryCapacityKwh ?? null;
+  const gridFlowClass = gridPowerW < 0 ? "flow-green" : gridPowerW > 0 ? "flow-red" : "flow-neutral";
+  const batteryFlowClass = batteryPowerW < 0 ? "flow-green" : batteryPowerW > 0 ? "flow-red" : "flow-neutral";
 
   return (
     <article className="fronius-realtime-card">
@@ -165,27 +158,29 @@ function FroniusRealtimePanel({ electrical }: { electrical?: ElectricalMetrics }
       <div className="fronius-realtime-grid">
         <RealtimeMetricCard
           label="PV Production"
-          value={formatPower(pvPowerW)}
+          reading={formatPowerParts(pvPowerW)}
           detail={pvPowerW > 0 ? "Produktion aktiv" : "Keine Produktion"}
           accentClass="pv"
         />
         <RealtimeMetricCard
           label="Consumption"
-          value={formatPower(loadPowerW)}
+          reading={formatPowerParts(loadPowerW)}
           detail={loadPowerW > 0 ? "Aktueller Verbrauch" : "Kein Verbrauch"}
           accentClass="consumption"
         />
         <RealtimeMetricCard
           label="Grid"
-          value={formatSignedPower(gridPowerW)}
+          reading={formatPowerParts(gridPowerW)}
           detail={gridPowerW >= 0 ? "Netzbezug" : "Einspeisung"}
           accentClass="grid"
+          flowClass={gridFlowClass}
         />
         <RealtimeMetricCard
           label="Battery"
-          value={formatSignedPower(batteryPowerW)}
+          reading={formatPowerParts(batteryPowerW)}
           detail={formatBatteryDetail(batterySoc, batteryCapacity)}
           accentClass="battery"
+          flowClass={batteryFlowClass}
         />
       </div>
     </article>
@@ -194,19 +189,24 @@ function FroniusRealtimePanel({ electrical }: { electrical?: ElectricalMetrics }
 
 function RealtimeMetricCard({
   label,
-  value,
+  reading,
   detail,
   accentClass,
+  flowClass,
 }: {
   label: string;
-  value: string;
+  reading: { value: string; unit: string };
   detail: string;
   accentClass: string;
+  flowClass?: "flow-green" | "flow-red" | "flow-neutral";
 }) {
   return (
     <article className={`fronius-metric-card ${accentClass}`}>
       <p>{label}</p>
-      <strong>{value}</strong>
+      <div className={`fronius-metric-reading ${flowClass ?? "flow-neutral"}`}>
+        <strong>{reading.value}</strong>
+        <span>{reading.unit}</span>
+      </div>
       <span>{detail}</span>
     </article>
   );
@@ -408,17 +408,12 @@ function StaleBadge({ timestampUtc, hasData }: { timestampUtc: string; hasData: 
   return <span className="stale-badge cached"> letzter Wert {label}</span>;
 }
 
-function formatPower(valueW: number) {
+function formatPowerParts(valueW: number) {
   const absValue = Math.abs(valueW);
   if (absValue >= 1000) {
-    return `${(absValue / 1000).toFixed(2)} kW`;
+    return { value: (absValue / 1000).toFixed(2), unit: "kW" };
   }
-  return `${Math.round(absValue)} W`;
-}
-
-function formatSignedPower(valueW: number) {
-  const prefix = valueW < 0 ? "-" : "+";
-  return `${prefix}${formatPower(valueW)}`;
+  return { value: `${Math.round(absValue)}`, unit: "W" };
 }
 
 function formatBatteryDetail(soc: number | null, capacityKwh: number | null) {

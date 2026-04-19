@@ -318,6 +318,37 @@ body {
   color: var(--text);
 }
 
+.fronius-metric-reading {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  margin: 0 0 10px;
+}
+
+.fronius-metric-reading strong {
+  margin: 0;
+}
+
+.fronius-metric-reading > span {
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+.fronius-metric-reading.flow-green strong,
+.fronius-metric-reading.flow-green > span {
+  color: #79d16b;
+}
+
+.fronius-metric-reading.flow-red strong,
+.fronius-metric-reading.flow-red > span {
+  color: #ef6f6c;
+}
+
+.fronius-metric-reading.flow-neutral strong,
+.fronius-metric-reading.flow-neutral > span {
+  color: var(--text);
+}
+
 .fronius-metric-card span {
   color: var(--muted);
   font-size: 0.9rem;

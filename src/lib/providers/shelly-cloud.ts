@@ -1,10 +1,9 @@
 /**
  * Shelly Cloud API provider.
- * 
- * Fetches Shelly H&T sensor data via Shelly's cloud API as a fallback when:
- * - Devices are offline/sleeping and not responding to LAN polling
- * - Webhook reports haven't been received recently
- * 
+ *
+ * Fetches Shelly H&T sensor data from Shelly Cloud.
+ * No local LAN polling or webhook cache is used.
+ *
  * Requires SHELLY_CLOUD_AUTH_TOKEN environment variable.
  * Get token: https://control.shelly.cloud → Account → Mobile App
  */
@@ -12,41 +11,43 @@ import type { ClimateReading } from "@/lib/types";
 import { env } from "@/lib/env";
 import { log } from "@/lib/logger";
 
-interface ShellyCloudDevice {
-  id: string;
-  name: string;
-  model: string;
-  status: Record<string, unknown>;
-}
-
 interface ShellyCloudHtData {
-  tmp?: { value: number };
-  hum?: { value: number };
+  tmp?: { value?: number; tC?: number; is_valid?: boolean };
+  hum?: { value?: number; is_valid?: boolean };
+  name?: string;
+  id?: string;
+  _updated?: string;
+  wifi_sta?: { ip?: string };
 }
 
-interface ShellyCloudApiError {
-  code: number;
-  message?: string;
-}
-
-function isShellyError(obj: unknown): obj is ShellyCloudApiError {
-  return typeof obj === "object" && obj !== null && "code" in obj;
-}
+const SHELLY_NAME_OVERRIDES: Record<string, string> = {
+  // by IP
+  "192.168.70.34": "Wohnzimmer",
+  "192.168.70.40": "Gang 1. OG",
+  "192.168.70.36": "Vorhaus",
+  // by device ID (as returned by Shelly Cloud API)
+  "e4d0ae": "Wohnzimmer",
+  "244cab43695d": "Gang 1. OG",
+  "ad55a4": "Vorhaus",
+};
 
 export async function fetchShellyCloudDevices(): Promise<ClimateReading[]> {
-  const token = env().SHELLY_CLOUD_AUTH_TOKEN;
-  const apiUrl = env().SHELLY_CLOUD_API_URL;
+  const config = env();
+  const token = config.SHELLY_CLOUD_AUTH_TOKEN;
+  const apiUrl = config.SHELLY_CLOUD_API_URL;
+
+  log("info", "shelly.cloud.fetch_start", { apiUrl, hasToken: !!token });
+
   if (!token) {
+    log("warn", "shelly.cloud.no_token", {});
     return [];
   }
 
   try {
-    const response = await fetch(`${apiUrl}/devices`, {
+    const url = `${apiUrl}/device/all_status?auth_key=${encodeURIComponent(token)}`;
+    log("info", "shelly.cloud.api_call", { endpoint: `${apiUrl}/device/all_status` });
+    const response = await fetch(url, {
       method: "GET",
-      headers: {
-        Authorization: `Bearer ${token}`,
-        "Content-Type": "application/json",
-      },
       cache: "no-store",
       signal: AbortSignal.timeout(10000),
     });
@@ -56,37 +57,35 @@ export async function fetchShellyCloudDevices(): Promise<ClimateReading[]> {
       return [];
     }
 
-    const data = (await response.json()) as { devices?: ShellyCloudDevice[] };
-    const devices = data.devices ?? [];
+    const payload = (await response.json()) as {
+      data?: {
+        devices_status?: Record<string, ShellyCloudHtData>;
+      } | Record<string, ShellyCloudHtData>;
+    };
 
-    // Filter for H&T devices and extract temperature/humidity
+    const nestedStatuses = payload.data && "devices_status" in payload.data ? payload.data.devices_status : undefined;
+    const deviceStatuses = nestedStatuses ?? (payload.data as Record<string, ShellyCloudHtData> | undefined) ?? {};
+
+    // Extract only H&T devices (have both tmp and hum fields)
     const readings: ClimateReading[] = [];
-    for (const device of devices) {
-      if (!device.model.toLowerCase().includes("h&t") && !device.model.toLowerCase().includes("ht")) {
-        continue;
-      }
+    for (const [id, htData] of Object.entries(deviceStatuses)) {
+      if (!htData?.hum) continue; // not an H&T sensor
 
-      const htData = device.status as ShellyCloudHtData;
-      const temperatureC = htData.tmp?.value ?? null;
+      const ip = htData.wifi_sta?.ip ?? id;
+      const temperatureC = htData.tmp?.value ?? htData.tmp?.tC ?? null;
       const humidityPct = htData.hum?.value ?? null;
+      const deviceName = htData.name ?? SHELLY_NAME_OVERRIDES[ip] ?? SHELLY_NAME_OVERRIDES[id] ?? ip;
+      const timestampUtc = htData._updated
+        ? new Date(htData._updated + " UTC").toISOString()
+        : new Date().toISOString();
 
-      if (temperatureC !== null || humidityPct !== null) {
-        readings.push({
-          ip: device.id,
-          deviceName: device.name ?? null,
-          temperatureC,
-          humidityPct,
-          timestampUtc: new Date().toISOString(),
-        });
-
-        log("info", "shelly.cloud.device_fetched", {
-          id: device.id,
-          name: device.name,
-          model: device.model,
-          temperatureC,
-          humidityPct,
-        });
-      }
+      readings.push({
+        ip,
+        deviceName,
+        temperatureC,
+        humidityPct,
+        timestampUtc,
+      });
     }
 
     return readings;

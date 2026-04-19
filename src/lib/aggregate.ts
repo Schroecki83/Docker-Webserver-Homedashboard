@@ -5,16 +5,15 @@
  *
  * Staleness rule: a source is "stale" if its timestamp is > 2 minutes old.
  * Precedence: Fronius is authoritative for electrical metrics.
- * Climate data precedence: webhook/local cache > cloud > null
+ * Climate data: cloud only
  */
 import { fetchPowerFlow } from "@/lib/providers/fronius";
-import { fetchAllShellyHt } from "@/lib/providers/shelly-ht";
 import { fetchAllShelly25 } from "@/lib/providers/shelly-25";
 import { fetchLuxtronicSnapshot } from "@/lib/providers/luxtronic-ws";
 import { fetchShellyCloudDevices } from "@/lib/providers/shelly-cloud";
 import { env } from "@/lib/env";
 import { log } from "@/lib/logger";
-import type { DashboardSnapshot, SourceMetadata, SourceState, ClimateReading } from "@/lib/types";
+import type { DashboardSnapshot, SourceMetadata, SourceState } from "@/lib/types";
 
 const STALE_MS = 2 * 60 * 1000;
 
@@ -34,11 +33,10 @@ async function settle<T>(label: string, fn: () => Promise<T>): Promise<{ ok: tru
 }
 
 export async function buildSnapshot(): Promise<DashboardSnapshot> {
-  const { SHELLY_HT_DEVICES, SHELLY_GEN1_DEVICES, LUXTRONIC_HOST, LUXTRONIC_PORT, LUXTRONIC_PASSWORD } = env();
+  const { SHELLY_GEN1_DEVICES, LUXTRONIC_HOST, LUXTRONIC_PORT, LUXTRONIC_PASSWORD } = env();
 
-  const [froniusResult, shellyHtResult, shelly25Result, luxtronicResult, shellyCloudResult] = await Promise.all([
+  const [froniusResult, shelly25Result, luxtronicResult, shellyCloudResult] = await Promise.all([
     settle("fronius", fetchPowerFlow),
-    settle("shelly.ht", () => fetchAllShellyHt(SHELLY_HT_DEVICES)),
     settle("shelly.25", () => fetchAllShelly25(SHELLY_GEN1_DEVICES)),
     settle("luxtronic", () => fetchLuxtronicSnapshot(LUXTRONIC_HOST, LUXTRONIC_PORT, LUXTRONIC_PASSWORD)),
     settle("shelly.cloud", fetchShellyCloudDevices),
@@ -57,13 +55,17 @@ export async function buildSnapshot(): Promise<DashboardSnapshot> {
     sources.push({ source: "fronius", state: "error", updatedAt: new Date().toISOString(), message: froniusResult.message });
   }
 
-  // Shelly source metadata (combined)
-  const shellyOk = shellyHtResult.ok || shelly25Result.ok;
+  // Shelly source metadata (shutters + cloud climate)
+  const shellyOk = shelly25Result.ok || shellyCloudResult.ok;
   sources.push({
     source: "shelly",
     state: shellyOk ? "ok" : "error",
     updatedAt: new Date().toISOString(),
-    message: !shellyOk ? [shellyHtResult.ok ? "" : shellyHtResult.message, shelly25Result.ok ? "" : shelly25Result.message].filter(Boolean).join("; ") : undefined,
+    message: !shellyOk
+      ? [shelly25Result.ok ? "" : shelly25Result.message, shellyCloudResult.ok ? "" : shellyCloudResult.message]
+          .filter(Boolean)
+          .join("; ")
+      : undefined,
   });
 
   // Luxtronic source metadata
@@ -77,30 +79,13 @@ export async function buildSnapshot(): Promise<DashboardSnapshot> {
     sources.push({ source: "luxtronic", state: "error", updatedAt: new Date().toISOString(), message: luxtronicResult.message });
   }
 
-  // Merge climate data: local H&T devices + cloud fallback for unrepresented devices
-  const climateMap = new Map<string, ClimateReading>();
-
-  // Primary: local H&T readings (webhook + LAN polling)
-  if (shellyHtResult.ok) {
-    for (const reading of shellyHtResult.value) {
-      climateMap.set(reading.ip, reading);
-    }
-  }
-
-  // Fallback: cloud data for devices not in local results
-  if (shellyCloudResult.ok) {
-    for (const cloudReading of shellyCloudResult.value) {
-      if (!climateMap.has(cloudReading.ip)) {
-        climateMap.set(cloudReading.ip, cloudReading);
-        log("info", "shelly.cloud.fallback_used", { ip: cloudReading.ip, name: cloudReading.deviceName });
-      }
-    }
-  }
+  // Climate data: cloud only
+  const climate = shellyCloudResult.ok ? shellyCloudResult.value : [];
 
   return {
     electrical: froniusResult.ok ? froniusResult.value : undefined,
     heatpump: luxtronicResult.ok ? luxtronicResult.value : undefined,
-    climate: Array.from(climateMap.values()),
+    climate,
     shutters: shelly25Result.ok ? shelly25Result.value : [],
     sources,
   };

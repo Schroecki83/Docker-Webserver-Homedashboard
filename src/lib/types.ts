@@ -14,6 +14,7 @@ export interface ElectricalMetrics {
   batteryPowerW: number;
   pvEnergyTodayKwh: number | null;
   loadEnergyTodayKwh: number | null;
+  gridImportTodayKwh: number | null;
   gridExportTodayKwh: number | null;
   autonomyPct: number | null;
   selfConsumptionPct: number | null;

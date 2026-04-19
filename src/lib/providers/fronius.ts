@@ -1,8 +1,8 @@
 import { env } from "@/lib/env";
 import {
-  FRONIUS_ARCHIVE_CHANNEL_MAP,
   computeLoadEnergyTodayKwh,
 } from "@/lib/providers/fronius-mapping";
+import { ensureFroniusDailyBaseline, getFroniusDailyBaseline, todayUtcDate } from "@/lib/history-store";
 import type { ElectricalMetrics } from "@/lib/types";
 
 interface FroniusStatus {
@@ -26,21 +26,23 @@ interface FroniusInverterData {
   E_Day?: number | null;
 }
 
-interface FroniusArchiveChannel {
-  Values?: Record<string, number | null> | null;
+interface FroniusMeterData {
+  EnergyReal_WAC_Plus_Absolute?: number | null;
+  EnergyReal_WAC_Minus_Absolute?: number | null;
 }
 
-interface FroniusArchiveDataPoint {
-  Data?: Record<string, FroniusArchiveChannel> | null;
+interface FroniusMeterResponse {
+  Head: { Status: FroniusStatus };
+  Body: { Data?: Record<string, FroniusMeterData> | null };
 }
 
-interface FroniusArchiveResponse {
-  Head: {
-    Status: FroniusStatus;
-  };
-  Body: {
-    Data?: Record<string, FroniusArchiveDataPoint> | null;
-  };
+interface FroniusInverterCommonData {
+  TOTAL_ENERGY?: { Value: number | null } | null;
+}
+
+interface FroniusInverterCommonResponse {
+  Head: { Status: FroniusStatus };
+  Body: { Data: FroniusInverterCommonData };
 }
 
 interface FroniusStorageController {
@@ -58,7 +60,8 @@ interface FroniusStorageSystemResponse {
   };
 }
 
-interface FroniusArchiveMetrics {
+interface FroniusDailyMetrics {
+  pvEnergyTodayKwh: number | null;
   gridImportTodayKwh: number | null;
   gridExportTodayKwh: number | null;
 }
@@ -110,6 +113,7 @@ export function mapPowerFlow(response: FroniusPowerFlowResponse): ElectricalMetr
     batteryPowerW: Site.P_Akku,
     pvEnergyTodayKwh: toKwh(pvEnergyDayWh),
     loadEnergyTodayKwh: null,
+    gridImportTodayKwh: null,
     gridExportTodayKwh: null,
     autonomyPct: Site.rel_Autonomy ?? null,
     selfConsumptionPct: Site.rel_SelfConsumption ?? null,
@@ -124,9 +128,9 @@ export async function fetchPowerFlow(): Promise<ElectricalMetrics> {
   const { FRONIUS_BASE_URL } = env();
   const baseUrl = FRONIUS_BASE_URL.replace(/\/$/, "");
   const headers = buildHeaders();
-  const [powerFlowResponse, archiveMetrics, storageMetrics] = await Promise.all([
+  const [powerFlowResponse, dailyMetrics, storageMetrics] = await Promise.all([
     fetchJson<FroniusPowerFlowResponse>(`${baseUrl}/solar_api/v1/GetPowerFlowRealtimeData.fcgi`, headers),
-    fetchArchiveMetrics(baseUrl, headers).catch(() => ({ gridImportTodayKwh: null, gridExportTodayKwh: null })),
+    fetchDailyMetrics(baseUrl, headers).catch((): FroniusDailyMetrics => ({ pvEnergyTodayKwh: null, gridImportTodayKwh: null, gridExportTodayKwh: null })),
     fetchStorageMetrics(baseUrl, headers).catch(() => ({ batterySocPct: null, batteryStoredEnergyKwh: null, batteryCapacityKwh: null })),
   ]);
 
@@ -135,12 +139,14 @@ export async function fetchPowerFlow(): Promise<ElectricalMetrics> {
 
   return {
     ...metrics,
+    pvEnergyTodayKwh: dailyMetrics.pvEnergyTodayKwh,
     loadEnergyTodayKwh: computeLoadEnergyTodayKwh({
-      pvEnergyTodayKwh: metrics.pvEnergyTodayKwh,
-      gridImportTodayKwh: archiveMetrics.gridImportTodayKwh,
-      gridExportTodayKwh: archiveMetrics.gridExportTodayKwh,
+      pvEnergyTodayKwh: dailyMetrics.pvEnergyTodayKwh,
+      gridImportTodayKwh: dailyMetrics.gridImportTodayKwh,
+      gridExportTodayKwh: dailyMetrics.gridExportTodayKwh,
     }),
-    gridExportTodayKwh: archiveMetrics.gridExportTodayKwh,
+    gridImportTodayKwh: dailyMetrics.gridImportTodayKwh,
+    gridExportTodayKwh: dailyMetrics.gridExportTodayKwh,
     batterySocPct,
     batteryStoredEnergyKwh: storageMetrics.batteryStoredEnergyKwh,
     batteryCapacityKwh: storageMetrics.batteryCapacityKwh,
@@ -157,28 +163,37 @@ async function fetchJson<T>(url: string, headers?: HeadersInit): Promise<T> {
   return (await response.json()) as T;
 }
 
-async function fetchArchiveMetrics(baseUrl: string, headers?: HeadersInit): Promise<FroniusArchiveMetrics> {
-  const params = new URLSearchParams({
-    Scope: "System",
-    StartDate: froniusToday(),
-    EndDate: froniusToday(),
-  });
-  params.append("Channel", FRONIUS_ARCHIVE_CHANNEL_MAP.gridImportTodayKwh);
-  params.append("Channel", FRONIUS_ARCHIVE_CHANNEL_MAP.gridExportTodayKwh);
+async function fetchDailyMetrics(baseUrl: string, headers?: HeadersInit): Promise<FroniusDailyMetrics> {
+  const [meterResponse, inverterResponse] = await Promise.all([
+    fetchJson<FroniusMeterResponse>(`${baseUrl}/solar_api/v1/GetMeterRealtimeData.cgi?Scope=System`, headers),
+    fetchJson<FroniusInverterCommonResponse>(
+      `${baseUrl}/solar_api/v1/GetInverterRealtimeData.cgi?Scope=Device&DeviceId=1&DataCollection=CommonInverterData`,
+      headers,
+    ),
+  ]);
 
-  const payload = await fetchJson<FroniusArchiveResponse>(`${baseUrl}/solar_api/v1/GetArchiveData.cgi?${params.toString()}`, headers);
-  ensureStatusOk(payload.Head.Status);
+  const meter = Object.values(meterResponse.Body.Data ?? {})[0];
+  const meterImportWh = meter?.EnergyReal_WAC_Plus_Absolute ?? null;
+  const meterExportWh = meter?.EnergyReal_WAC_Minus_Absolute ?? null;
+  const inverterTotalWh = inverterResponse.Body.Data.TOTAL_ENERGY?.Value ?? null;
 
-  const channels = Object.values(payload.Body.Data ?? {})
-    .flatMap((item) => Object.entries(item?.Data ?? {}));
+  if (meterImportWh === null || meterExportWh === null || inverterTotalWh === null) {
+    return { pvEnergyTodayKwh: null, gridImportTodayKwh: null, gridExportTodayKwh: null };
+  }
 
-  const gridImportedKwh = getFirstArchiveValue(channels, FRONIUS_ARCHIVE_CHANNEL_MAP.gridImportTodayKwh);
-  const gridExportedKwh = getFirstArchiveValue(channels, FRONIUS_ARCHIVE_CHANNEL_MAP.gridExportTodayKwh);
+  const today = todayUtcDate();
+  ensureFroniusDailyBaseline(today, meterImportWh, meterExportWh, inverterTotalWh);
+  const baseline = getFroniusDailyBaseline(today);
 
-  return {
-    gridImportTodayKwh: gridImportedKwh,
-    gridExportTodayKwh: gridExportedKwh,
-  };
+  if (!baseline) {
+    return { pvEnergyTodayKwh: null, gridImportTodayKwh: null, gridExportTodayKwh: null };
+  }
+
+  const gridImportTodayKwh = toKwh(Math.max(0, meterImportWh - baseline.meterImportWh));
+  const gridExportTodayKwh = toKwh(Math.max(0, meterExportWh - baseline.meterExportWh));
+  const pvEnergyTodayKwh = toKwh(Math.max(0, inverterTotalWh - baseline.inverterTotalWh));
+
+  return { pvEnergyTodayKwh, gridImportTodayKwh, gridExportTodayKwh };
 }
 
 async function fetchStorageMetrics(baseUrl: string, headers?: HeadersInit): Promise<FroniusStorageMetrics> {
@@ -214,33 +229,6 @@ function ensureStatusOk(status: FroniusStatus): void {
   if (status.Code !== 0) {
     throw new Error(status.UserMessage || status.Reason || `Fronius request failed with code ${status.Code}`);
   }
-}
-
-function getFirstArchiveValue(
-  channels: Array<[string, FroniusArchiveChannel]>,
-  channelName: string,
-): number | null {
-  const match = channels.find(([name]) => name === channelName)?.[1];
-  const values = Object.values(match?.Values ?? {}).filter((value): value is number => typeof value === "number" && Number.isFinite(value));
-  if (values.length === 0) {
-    return null;
-  }
-
-  return toKwh(values[0]);
-}
-
-function froniusToday(): string {
-  const formatter = new Intl.DateTimeFormat("en", {
-    timeZone: "Europe/Vienna",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  });
-  const parts = formatter.formatToParts(new Date());
-  const year = parts.find((part) => part.type === "year")?.value ?? "0000";
-  const month = parts.find((part) => part.type === "month")?.value ?? "00";
-  const day = parts.find((part) => part.type === "day")?.value ?? "00";
-  return `${year}-${month}-${day}`;
 }
 
 function toKwh(valueWh: number | null | undefined): number | null {
