@@ -107,24 +107,21 @@ export function DashboardClient() {
           </section>
         ) : (
           <section className="tab-panel tab-panel-heizung" aria-live="polite">
-            <h2>Heatpump - Full Information</h2>
+            <h2>Wärmepumpe</h2>
             {snapshotError ? <p className="state-line error">{snapshotError}</p> : null}
 
-            <article className="panel-card">
-              <h3>Luxtronic</h3>
-              {heatpumpRows.length === 0 ? (
-                <p className="state-line">Keine Waermepumpen-Daten vorhanden.</p>
-              ) : (
-                <ul className="metric-list">
-                  {heatpumpRows.map((row) => (
-                    <li key={row.label}>
-                      <span>{row.label}</span>
-                      <strong>{formatTemp(row.value)}</strong>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </article>
+            {heatpumpRows.length === 0 ? (
+              <p className="state-line">Keine Waermepumpen-Daten vorhanden.</p>
+            ) : (
+              <ul className="metric-list">
+                {heatpumpRows.map((row) => (
+                  <li key={row.key}>
+                    <span>{row.label}</span>
+                    <strong>{formatTemp(row.value)}</strong>
+                  </li>
+                ))}
+              </ul>
+            )}
           </section>
         )}
       </section>
@@ -297,15 +294,15 @@ function mapHeatpumpRows(heatpump: HeatpumpSnapshot | undefined) {
   }
 
   return [
-    { label: "Vorlauf", value: heatpump.vorlauf_c },
-    { label: "Ruecklauf", value: heatpump.ruecklauf_c },
-    { label: "Ruecklauf Soll", value: heatpump.ruecklauf_soll_c },
-    { label: "Heissgas", value: heatpump.heissgas_c },
-    { label: "Aussentemperatur", value: heatpump.aussentemperatur_c },
-    { label: "Warmwasser Ist", value: heatpump.warmwasser_ist_c },
-    { label: "Warmwasser Soll", value: heatpump.warmwasser_soll_c },
-    { label: "Waermequelle Ein", value: heatpump.waermequelle_ein_c },
-    { label: "Waermequelle Aus", value: heatpump.waermequelle_aus_c },
+    { key: "ruecklauf-soll", label: "Rücklauf Soll", value: heatpump.ruecklauf_soll_c },
+    { key: "ruecklauf", label: "Rücklauf", value: heatpump.ruecklauf_c },
+    { key: "warmwasser-soll", label: "Warmwasser Soll", value: heatpump.warmwasser_soll_c },
+    { key: "warmwasser", label: "Warmwasser", value: heatpump.warmwasser_ist_c },
+    { key: "aussentemperatur", label: "Aussentemperatur", value: heatpump.aussentemperatur_c },
+    { key: "vorlauf-2", label: "Vorlauf", value: heatpump.vorlauf_c },
+    { key: "heisgas", label: "Heisgas", value: heatpump.heissgas_c },
+    { key: "waermequelle-ein", label: "Wärmequelle Ein", value: heatpump.waermequelle_ein_c },
+    { key: "waermequelle-aus", label: "Wärmequelle Aus", value: heatpump.waermequelle_aus_c },
   ];
 }
 
