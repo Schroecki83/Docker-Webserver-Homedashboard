@@ -14,10 +14,42 @@ import { log } from "@/lib/logger";
 interface ShellyCloudHtData {
   tmp?: { value?: number; tC?: number; is_valid?: boolean };
   hum?: { value?: number; is_valid?: boolean };
+  temperature?: number;
+  humidity?: number;
+  ext_temperature?: number | { value?: number; tC?: number };
+  ext_humidity?: number | { value?: number };
   name?: string;
   id?: string;
   _updated?: string;
   wifi_sta?: { ip?: string };
+}
+
+function asFiniteNumber(value: unknown): number | null {
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return value;
+  }
+
+  if (typeof value === "string") {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+
+  if (value && typeof value === "object") {
+    const candidate = value as { value?: unknown; tC?: unknown };
+    return asFiniteNumber(candidate.value) ?? asFiniteNumber(candidate.tC);
+  }
+
+  return null;
+}
+
+function pickFirstNumber(...values: unknown[]): number | null {
+  for (const value of values) {
+    const parsed = asFiniteNumber(value);
+    if (parsed !== null) {
+      return parsed;
+    }
+  }
+  return null;
 }
 
 const SHELLY_NAME_OVERRIDES: Record<string, string> = {
@@ -35,6 +67,7 @@ export async function fetchShellyCloudDevices(): Promise<ClimateReading[]> {
   const config = env();
   const token = config.SHELLY_CLOUD_AUTH_TOKEN;
   const apiUrl = config.SHELLY_CLOUD_API_URL;
+  const expectedDevices = new Set(config.SHELLY_HT_DEVICES);
 
   log("info", "shelly.cloud.fetch_start", { apiUrl, hasToken: !!token });
 
@@ -66,14 +99,21 @@ export async function fetchShellyCloudDevices(): Promise<ClimateReading[]> {
     const nestedStatuses = payload.data && "devices_status" in payload.data ? payload.data.devices_status : undefined;
     const deviceStatuses = nestedStatuses ?? (payload.data as Record<string, ShellyCloudHtData> | undefined) ?? {};
 
-    // Extract only H&T devices (have both tmp and hum fields)
+    // Accept legacy (tmp/hum) and newer payload variants (temperature/ext_temperature).
     const readings: ClimateReading[] = [];
     for (const [id, htData] of Object.entries(deviceStatuses)) {
-      if (!htData?.hum) continue; // not an H&T sensor
+      const temperatureC = pickFirstNumber(htData.tmp?.value, htData.tmp?.tC, htData.temperature, htData.ext_temperature);
+      const humidityPct = pickFirstNumber(htData.hum?.value, htData.humidity, htData.ext_humidity);
+
+      if (temperatureC === null && humidityPct === null) {
+        continue;
+      }
 
       const ip = htData.wifi_sta?.ip ?? id;
-      const temperatureC = htData.tmp?.value ?? htData.tmp?.tC ?? null;
-      const humidityPct = htData.hum?.value ?? null;
+      if (expectedDevices.size > 0 && !expectedDevices.has(ip) && !expectedDevices.has(id)) {
+        continue;
+      }
+
       const deviceName = htData.name ?? SHELLY_NAME_OVERRIDES[ip] ?? SHELLY_NAME_OVERRIDES[id] ?? ip;
       const timestampUtc = htData._updated
         ? new Date(htData._updated + " UTC").toISOString()

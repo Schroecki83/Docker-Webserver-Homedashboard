@@ -42,7 +42,7 @@ export function DashboardClient() {
   }, []);
 
   const heatpumpRows = useMemo(() => mapHeatpumpRows(snapshot?.heatpump), [snapshot?.heatpump]);
-  const temperatureRows = useMemo(() => mapTemperatureRows(snapshot?.heatpump, snapshot?.climate ?? []), [snapshot?.heatpump, snapshot?.climate]);
+  const temperatureRows = useMemo(() => mapTemperatureRows(snapshot?.heatpump, snapshot?.climate ?? []).slice(0, 4), [snapshot?.heatpump, snapshot?.climate]);
 
   return (
     <main className="dash-shell">
@@ -75,28 +75,25 @@ export function DashboardClient() {
 
         {activeTab === "shelly" ? (
           <section className="tab-panel tab-panel-dashboard" aria-live="polite">
-            <h2>Dashboard</h2>
+            <h2>Temperatur</h2>
             {snapshotError ? <p className="state-line error">{snapshotError}</p> : null}
 
-            <article className="panel-card temperature-panel">
-              <h3>Alle Temperaturen</h3>
-              {temperatureRows.length === 0 ? (
-                <p className="state-line">Keine Temperaturdaten vorhanden.</p>
-              ) : (
-                <div className="temperature-grid">
-                  {temperatureRows.map((row) => (
-                    <article key={row.key} className="temperature-metric">
-                      <h4>{row.label}</h4>
-                      <strong>{formatTemp(row.temperatureC)}</strong>
-                      {row.humidityPct !== null ? <p className="temperature-meta">Luftfeuchte {formatHumidity(row.humidityPct)}</p> : null}
-                      <p className="temperature-meta">
-                        <StaleBadge timestampUtc={row.timestampUtc} hasData={row.temperatureC !== null} />
-                      </p>
-                    </article>
-                  ))}
-                </div>
-              )}
-            </article>
+            {temperatureRows.length === 0 ? (
+              <p className="state-line">Keine Temperaturdaten vorhanden.</p>
+            ) : (
+              <div className="temperature-grid">
+                {temperatureRows.map((row) => (
+                  <article key={row.key} className="temperature-metric">
+                    <h4>{row.label}</h4>
+                    <strong>{formatTemp(row.temperatureC)}</strong>
+                    {row.humidityPct !== null ? <p className="temperature-meta">Luftfeuchte {formatHumidity(row.humidityPct)}</p> : null}
+                    <p className="temperature-meta">
+                      <StaleBadge timestampUtc={row.timestampUtc} hasData={row.temperatureC !== null} />
+                    </p>
+                  </article>
+                ))}
+              </div>
+            )}
           </section>
         ) : activeTab === "pv" ? (
           <section className="tab-panel tab-panel-fronius" aria-live="polite">
@@ -127,9 +124,6 @@ export function DashboardClient() {
                   ))}
                 </ul>
               )}
-              <p className="power-time">
-                {snapshot?.heatpump?.timestampUtc ? `Stand: ${formatTime(snapshot.heatpump.timestampUtc)}` : "Kein Zeitstempel"}
-              </p>
             </article>
           </section>
         )}
@@ -152,7 +146,6 @@ function FroniusRealtimePanel({ electrical }: { electrical?: ElectricalMetrics }
     <article className="fronius-realtime-card">
       <div className="fronius-realtime-header">
         <p>Realtime</p>
-        <span>{electrical?.timestampUtc ? formatTime(electrical.timestampUtc) : "Kein Zeitstempel"}</span>
       </div>
 
       <div className="fronius-realtime-grid">

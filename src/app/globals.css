@@ -46,7 +46,7 @@ body {
 }
 
 .dash-frame {
-  width: min(100%, 1840px);
+  width: min(100%, 1920px);
   min-height: calc(100vh - 48px);
   border: 1px solid var(--line);
   border-radius: 28px;
@@ -129,6 +129,10 @@ body {
 
 .dash-frame-shelly .tab-panel-dashboard {
   border-top-left-radius: 0;
+}
+
+.dash-frame-heatpump .tab-panel-heizung {
+  border-top-right-radius: 0;
 }
 
 .tab-panel h2 {
@@ -451,7 +455,7 @@ body {
   }
 
   .dash-frame {
-    min-height: calc(100vh - 56px);
+    min-height: min(1080px, calc(100vh - 56px));
     padding: 32px;
   }
 
@@ -541,6 +545,35 @@ body {
     font-size: 1.2rem;
   }
 
+}
+
+@media (max-width: 600px) and (min-height: 1024px) and (orientation: portrait) {
+  .dash-shell {
+    padding: 10px;
+  }
+
+  .dash-frame {
+    min-height: calc(100vh - 20px);
+    padding: 14px;
+  }
+
+  .tab-row {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0;
+    align-items: stretch;
+  }
+
+  .tab-btn {
+    width: 100%;
+    border-radius: 18px 18px 0 0;
+    padding: 12px 8px 10px;
+    text-align: center;
+  }
+
+  .tab-panel {
+    margin-top: -1px;
+  }
 }
 
 @media (max-width: 1100px) {
