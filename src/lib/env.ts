@@ -29,7 +29,7 @@ function loadEnv() {
   return result.data;
 }
 
-export type Env = z.infer<typeof envSchema>;
+type Env = z.infer<typeof envSchema>;
 
 let cachedEnv: Env | null = null;
 

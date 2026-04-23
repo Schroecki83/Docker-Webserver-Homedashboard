@@ -1,4 +1,4 @@
-export interface LoadEnergyInput {
+interface LoadEnergyInput {
   pvEnergyTodayKwh: number | null;
   gridImportTodayKwh: number | null;
   gridExportTodayKwh: number | null;

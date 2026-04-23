@@ -21,7 +21,7 @@ function nowUtc(): string {
   return new Date().toISOString();
 }
 
-export async function fetchShelly25(ip: string): Promise<ShutterReading> {
+async function fetchShelly25(ip: string): Promise<ShutterReading> {
   const url = `http://${ip}/status`;
   let status: Shelly25Status;
 
