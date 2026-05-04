@@ -13,7 +13,7 @@ Current data sources:
 ## Runtime Model
 
 - Frontend uses Server-Sent Events via `/api/stream` for live updates.
-- Stream updates are emitted every 30 seconds.
+- Stream updates are emitted every 2 minutes.
 - Backend still exposes `/api/snapshot` for direct JSON polling/debugging.
 - Heatpump history is stored in SQLite.
 - Fronius daily values are derived from local cumulative counters and a per-day baseline.

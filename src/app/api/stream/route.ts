@@ -3,7 +3,7 @@ import { log } from "@/lib/logger";
 
 export const dynamic = "force-dynamic";
 
-const INTERVAL_MS = 30_000;
+const INTERVAL_MS = 120_000;
 
 export async function GET() {
   const encoder = new TextEncoder();
