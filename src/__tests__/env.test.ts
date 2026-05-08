@@ -13,8 +13,8 @@ describe("env", () => {
   });
 
   it("loads required values", async () => {
-    const module = await import("@/lib/env");
-    const value = module.env();
+    const envModule = await import("@/lib/env");
+    const value = envModule.env();
 
     expect(value.LUXTRONIC_PASSWORD).toBe("9999");
     expect(value.SHELLY_HT_DEVICES).toEqual(["192.168.70.34", "192.168.70.40"]);

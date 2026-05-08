@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useEffect, useMemo, useState } from "react";
 import type { ClimateReading, DashboardSnapshot, ElectricalMetrics, HeatpumpSnapshot } from "@/lib/types";
 
@@ -275,7 +276,7 @@ function DayMetricRow({
   return (
     <article className="fronius-day-item">
       <div className="fronius-day-icon-wrap">
-        <img src={iconSrc} alt={iconAlt} className="fronius-day-icon" />
+        <Image src={iconSrc} alt={iconAlt} width={38} height={38} className="fronius-day-icon" />
       </div>
       <div className="fronius-day-copy">
         <p>{label}</p>
@@ -393,9 +394,7 @@ function StaleBadge({ timestampUtc, hasData }: { timestampUtc: string; hasData: 
     return <span className="stale-badge cached"> letzter Wert, Zeit unbekannt</span>;
   }
 
-  const ageMin = Math.max(0, Math.floor((Date.now() - ts) / 60_000));
-  const label = ageMin < 60 ? `vor ${ageMin} min` : `vor ${Math.floor(ageMin / 60)} h`;
-  return <span className="stale-badge cached"> letzter Wert {label}</span>;
+  return <span className="stale-badge cached"> letzter Wert {formatTime(timestampUtc)}</span>;
 }
 
 function formatPowerParts(valueW: number) {
