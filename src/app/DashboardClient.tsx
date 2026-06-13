@@ -67,8 +67,22 @@ export function DashboardClient() {
       return;
     }
 
-    // Strict app-only deep link: no browser fallback and no Play Store redirect from our code.
-    window.location.href = "shelly://";
+    if (!/Android/i.test(window.navigator.userAgent)) {
+      return;
+    }
+
+    const intentByScheme = "intent://#Intent;scheme=shelly;package=cloud.shelly.smartcontrol;end";
+    const intentByPackage = "intent:#Intent;action=android.intent.action.MAIN;category=android.intent.category.LAUNCHER;package=cloud.shelly.smartcontrol;end";
+    const uriScheme = "shelly://";
+
+    const launch = (target: string) => {
+      window.location.href = target;
+    };
+
+    // Try multiple app-only launch formats to maximize compatibility across Android browsers.
+    launch(intentByScheme);
+    window.setTimeout(() => launch(intentByPackage), 180);
+    window.setTimeout(() => launch(uriScheme), 360);
   };
 
   return (
