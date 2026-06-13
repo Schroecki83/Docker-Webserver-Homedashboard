@@ -63,16 +63,6 @@ export function createHistoryStore(dbPath: string) {
     )
   `);
 
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS fronius_daily_baseline (
-      date TEXT PRIMARY KEY,
-      meter_import_wh REAL NOT NULL,
-      meter_export_wh REAL NOT NULL,
-      inverter_total_wh REAL NOT NULL,
-      recorded_at TEXT NOT NULL
-    )
-  `);
-
   const insertStmt = db.prepare(`
     INSERT OR REPLACE INTO heatpump_history (
       timestamp_utc,
@@ -107,17 +97,6 @@ export function createHistoryStore(dbPath: string) {
 
   const pruneStmt = db.prepare(`DELETE FROM heatpump_history WHERE timestamp_utc < ?`);
 
-  const insertBaselineStmt = db.prepare(`
-    INSERT OR IGNORE INTO fronius_daily_baseline (date, meter_import_wh, meter_export_wh, inverter_total_wh, recorded_at)
-    VALUES (?, ?, ?, ?, ?)
-  `);
-  const getBaselineStmt = db.prepare(`
-    SELECT meter_import_wh, meter_export_wh, inverter_total_wh FROM fronius_daily_baseline WHERE date = ?
-  `);
-  const pruneBaselineStmt = db.prepare(`
-    DELETE FROM fronius_daily_baseline WHERE recorded_at < ?
-  `);
-
   return {
     save(snapshot: HeatpumpSnapshot, retentionDays = RETENTION_DAYS) {
       insertStmt.run(
@@ -138,18 +117,6 @@ export function createHistoryStore(dbPath: string) {
     getHistory(days = RETENTION_DAYS): HeatpumpSnapshot[] {
       const rows = queryStmt.all(retentionCutoffIso(days)) as unknown as HeatpumpHistoryRow[];
       return rows.map(mapRowToSnapshot);
-    },
-
-    /** Insert baseline for today only if none exists yet (INSERT OR IGNORE). */
-    ensureFroniusDailyBaseline(date: string, meterImportWh: number, meterExportWh: number, inverterTotalWh: number) {
-      insertBaselineStmt.run(date, meterImportWh, meterExportWh, inverterTotalWh, new Date().toISOString());
-      pruneBaselineStmt.run(retentionCutoffIso(1));
-    },
-
-    getFroniusDailyBaseline(date: string): { meterImportWh: number; meterExportWh: number; inverterTotalWh: number } | null {
-      const row = getBaselineStmt.get(date) as { meter_import_wh: number; meter_export_wh: number; inverter_total_wh: number } | undefined;
-      if (!row) return null;
-      return { meterImportWh: row.meter_import_wh, meterExportWh: row.meter_export_wh, inverterTotalWh: row.inverter_total_wh };
     },
 
     close() {
@@ -173,12 +140,4 @@ export function saveHeatpumpSnapshot(snapshot: HeatpumpSnapshot) {
 
 export function getHeatpumpHistory(days = RETENTION_DAYS) {
   return historyStore().getHistory(days);
-}
-
-export function ensureFroniusDailyBaseline(date: string, meterImportWh: number, meterExportWh: number, inverterTotalWh: number) {
-  historyStore().ensureFroniusDailyBaseline(date, meterImportWh, meterExportWh, inverterTotalWh);
-}
-
-export function getFroniusDailyBaseline(date: string) {
-  return historyStore().getFroniusDailyBaseline(date);
 }

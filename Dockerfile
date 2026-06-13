@@ -1,8 +1,15 @@
 FROM node:22-alpine AS deps
+ARG TARGETARCH
 WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci --ignore-scripts
-RUN npm install --no-save lightningcss-linux-x64-musl@1.32.0
+RUN if [ "$TARGETARCH" = "arm64" ]; then \
+			npm install --no-save lightningcss-linux-arm64-musl@1.32.0; \
+		elif [ "$TARGETARCH" = "amd64" ]; then \
+			npm install --no-save lightningcss-linux-x64-musl@1.32.0; \
+		else \
+			echo "Unsupported TARGETARCH: $TARGETARCH" && exit 1; \
+		fi
 
 FROM node:22-alpine AS builder
 WORKDIR /app

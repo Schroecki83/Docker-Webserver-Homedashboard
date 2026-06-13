@@ -2,7 +2,7 @@ import { env } from "@/lib/env";
 import {
   computeLoadEnergyTodayKwh,
 } from "@/lib/providers/fronius-mapping";
-import { ensureFroniusDailyBaseline, getFroniusDailyBaseline, todayUtcDate } from "@/lib/history-store";
+import { ensureFroniusDailyBaseline, getFroniusDailyBaseline, todayUtcDate } from "@/lib/fronius-baseline-store";
 import type { ElectricalMetrics } from "@/lib/types";
 
 interface FroniusStatus {
