@@ -60,6 +60,10 @@ npm run test
 npm run lint
 ```
 
+Notes:
+- Full test execution requires a Node.js runtime that includes `node:sqlite`.
+- The dashboard now uses a harmonized color palette between the Temperaturen and Wettervorhersage cards.
+
 ## Environment Variables
 
 - `FRONIUS_BASE_URL` local inverter base URL, e.g. `http://192.168.70.79` (default set)
@@ -92,3 +96,4 @@ Notes:
 - [docs/fronius-mapping.md](docs/fronius-mapping.md)
 - [docs/shelly-cloud-integration.md](docs/shelly-cloud-integration.md)
 - [docs/shelly-ht-diagnostics.md](docs/shelly-ht-diagnostics.md)
+- [docs/ui-notes.md](docs/ui-notes.md)

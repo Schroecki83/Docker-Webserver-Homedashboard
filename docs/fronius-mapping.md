@@ -2,6 +2,11 @@
 
 This document defines how Fronius API payloads are mapped into the dashboard electrical metrics.
 
+## Update Note (2026-06-13)
+
+- No mapping changes in this release.
+- Recent dashboard updates were visual-only (card styling/alignment).
+
 ## Realtime Power Flow Mapping
 
 | Dashboard metric | Fronius source |

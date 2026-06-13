@@ -162,6 +162,13 @@ body {
   margin-bottom: 16px;
 }
 
+.temperature-panel {
+  border-color: rgba(169, 214, 229, 0.24);
+  background:
+    radial-gradient(circle at top left, rgba(169, 214, 229, 0.12), transparent 35%),
+    rgba(13, 23, 33, 0.8);
+}
+
 .dashboard-layout {
   display: grid;
   gap: 22px;
@@ -179,8 +186,8 @@ body {
   min-height: 180px;
   padding: 20px;
   background:
-    radial-gradient(circle at top right, rgba(138, 211, 255, 0.12), transparent 45%),
-    rgba(8, 15, 23, 0.92);
+    radial-gradient(circle at top right, rgba(186, 242, 143, 0.12), transparent 42%),
+    rgba(8, 15, 23, 0.88);
 }
 
 .temperature-metric h4 {
@@ -225,12 +232,6 @@ body {
   margin: 0;
 }
 
-.weather-panel-time {
-  color: var(--muted);
-  font-size: 0.92rem;
-  text-align: right;
-}
-
 .weather-grid {
   display: grid;
   grid-template-columns: repeat(5, minmax(0, 1fr));
@@ -271,17 +272,20 @@ body {
 
 .weather-card-backdrop {
   position: absolute;
-  right: -8px;
-  bottom: -10px;
-  width: 110px;
-  height: 110px;
-  opacity: 0.15;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0.14;
   pointer-events: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .weather-icon-svg {
-  width: 100%;
+  width: auto;
   height: 100%;
+  max-height: 100%;
   fill: none;
   stroke: rgba(232, 238, 245, 0.95);
   stroke-linecap: round;
@@ -884,10 +888,6 @@ body {
   .weather-panel-header {
     flex-direction: column;
     gap: 8px;
-  }
-
-  .weather-panel-time {
-    text-align: left;
   }
 
   .weather-grid {
