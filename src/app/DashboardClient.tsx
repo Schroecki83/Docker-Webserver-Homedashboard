@@ -62,6 +62,15 @@ export function DashboardClient() {
   const temperatureRows = useMemo(() => mapTemperatureRows(snapshot?.heatpump, snapshot?.climate ?? []).slice(0, 4), [snapshot?.heatpump, snapshot?.climate]);
   const weather = snapshot?.weather;
 
+  const openShellyApp = () => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    // Strict app-only deep link: no browser fallback and no Play Store redirect from our code.
+    window.location.href = "shelly://";
+  };
+
   return (
     <main className="dash-shell">
       <section className={`dash-frame dash-frame-${activeTab}`}>
@@ -86,6 +95,14 @@ export function DashboardClient() {
             onClick={() => setActiveTab("heatpump")}
           >
             Heizung
+          </button>
+          <button
+            type="button"
+            className="tab-btn tab-shelly tab-intent-link"
+            onClick={openShellyApp}
+            title="Shelly App auf Android öffnen"
+          >
+            Shelly App
           </button>
         </nav>
 

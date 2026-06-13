@@ -94,6 +94,26 @@ body {
   margin-bottom: -1px;
 }
 
+.tab-intent-link {
+  align-self: flex-end;
+  border-color: rgba(169, 214, 229, 0.35);
+  border-radius: 18px 18px 0 0;
+  color: var(--text);
+  text-decoration: none;
+  background: rgba(8, 14, 21, 0.45);
+  margin-bottom: -1px;
+}
+
+.tab-intent-link:hover {
+  border-color: rgba(138, 211, 255, 0.55);
+  background: rgba(13, 23, 33, 0.82);
+}
+
+.tab-intent-link:focus-visible {
+  outline: 2px solid rgba(138, 211, 255, 0.65);
+  outline-offset: 2px;
+}
+
 .tab-panel {
   border: 1px solid var(--tab-accent, var(--text));
   border-radius: 22px;
@@ -113,6 +133,10 @@ body {
 
 .tab-heizung {
   --tab-accent: var(--tab-heizung);
+}
+
+.tab-shelly {
+  --tab-accent: var(--tab-dashboard);
 }
 
 .tab-panel-dashboard {
@@ -748,7 +772,7 @@ body {
 
   .tab-row {
     display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: 0;
     align-items: stretch;
   }
@@ -757,8 +781,8 @@ body {
     width: 100%;
     border-radius: 18px 18px 0 0;
     min-width: 0;
-    padding: clamp(10px, 2.6vw, 12px) clamp(4px, 1.4vw, 8px) clamp(8px, 2vw, 10px);
-    font-size: clamp(0.78rem, 3.2vw, 0.92rem);
+    padding: clamp(9px, 2.2vw, 11px) clamp(2px, 1.1vw, 6px) clamp(8px, 1.8vw, 9px);
+    font-size: clamp(0.72rem, 2.8vw, 0.88rem);
     text-align: center;
   }
 
@@ -770,6 +794,13 @@ body {
   .tab-panel h2 {
     margin-bottom: 12px;
     font-size: clamp(1.5rem, 7vw, 2.2rem);
+  }
+
+  .tab-intent-link {
+    align-self: stretch;
+    margin: 0;
+    padding: clamp(9px, 2.2vw, 11px) clamp(2px, 1.1vw, 6px) clamp(8px, 1.8vw, 9px);
+    font-size: clamp(0.72rem, 2.8vw, 0.88rem);
   }
 
   .metric-list {
@@ -834,8 +865,13 @@ body {
   }
 
   .tab-btn {
-    padding: 12px 16px 10px;
-    font-size: 0.9rem;
+    padding: 11px 10px 9px;
+    font-size: 0.82rem;
+  }
+
+  .tab-intent-link {
+    padding: 11px 10px 9px;
+    font-size: 0.82rem;
   }
 
   .tab-panel {
@@ -931,7 +967,7 @@ body {
 @media (hover: none) and (pointer: coarse) {
   .tab-row {
     display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: 0;
     align-items: stretch;
   }
@@ -939,9 +975,23 @@ body {
   .tab-btn {
     width: 100%;
     min-width: 0;
-    padding: clamp(10px, 2.6vw, 14px) clamp(6px, 1.8vw, 12px) clamp(9px, 2.2vw, 12px);
-    font-size: clamp(0.78rem, 2.2vw, 0.95rem);
+    padding: clamp(9px, 2.2vw, 12px) clamp(3px, 1.2vw, 8px) clamp(8px, 1.8vw, 10px);
+    font-size: clamp(0.72rem, 2vw, 0.88rem);
     text-align: center;
+  }
+
+  .tab-intent-link {
+    align-self: stretch;
+    margin: 0;
+    padding: clamp(9px, 2.2vw, 12px) clamp(3px, 1.2vw, 8px) clamp(8px, 1.8vw, 10px);
+    font-size: clamp(0.72rem, 2vw, 0.88rem);
+  }
+}
+
+@media (max-width: 1100px) {
+  .tab-intent-link {
+    border-radius: 18px 18px 0 0;
+    margin-bottom: -1px;
   }
 }
 
