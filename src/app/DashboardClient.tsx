@@ -6,6 +6,22 @@ import type { ClimateReading, DashboardSnapshot, ElectricalMetrics, HeatpumpSnap
 
 type ActiveTab = "shelly" | "pv" | "heatpump";
 
+type MeteoconImporter = () => Promise<{ default: string }>;
+
+const METEOCON_IMPORTERS = {
+  "clear-day": () => import("@meteocons/svg/fill/clear-day.svg"),
+  "partly-cloudy-day": () => import("@meteocons/svg/fill/partly-cloudy-day.svg"),
+  overcast: () => import("@meteocons/svg/fill/overcast.svg"),
+  "overcast-day": () => import("@meteocons/svg/fill/overcast-day.svg"),
+  "overcast-day-rain": () => import("@meteocons/svg/fill/overcast-day-rain.svg"),
+  "fog-day": () => import("@meteocons/svg/fill/fog-day.svg"),
+  drizzle: () => import("@meteocons/svg/fill/drizzle.svg"),
+  snow: () => import("@meteocons/svg/fill/snow.svg"),
+  "thunderstorms-day-rain": () => import("@meteocons/svg/fill/thunderstorms-day-rain.svg"),
+} satisfies Record<string, MeteoconImporter>;
+
+type MeteoconSlug = keyof typeof METEOCON_IMPORTERS;
+
 export function DashboardClient() {
   const [activeTab, setActiveTab] = useState<ActiveTab>("shelly");
   const [snapshot, setSnapshot] = useState<DashboardSnapshot | null>(null);
@@ -186,77 +202,34 @@ function WeatherForecastPanel({ forecast }: { forecast?: WeatherForecast }) {
 }
 
 function WeatherConditionIcon({ code }: { code: number | null }) {
-  const variant = weatherVariant(code);
+  const slug = meteoconSlugFromWeatherCode(code);
+  const [iconSrc, setIconSrc] = useState<string | null>(null);
 
-  switch (variant) {
-    case "clear":
-      return (
-        <svg viewBox="0 0 160 160" className="weather-icon-svg">
-          <circle cx="80" cy="80" r="28" />
-          <g>
-            <line x1="80" y1="16" x2="80" y2="36" />
-            <line x1="80" y1="124" x2="80" y2="144" />
-            <line x1="16" y1="80" x2="36" y2="80" />
-            <line x1="124" y1="80" x2="144" y2="80" />
-            <line x1="35" y1="35" x2="49" y2="49" />
-            <line x1="111" y1="111" x2="125" y2="125" />
-            <line x1="35" y1="125" x2="49" y2="111" />
-            <line x1="111" y1="49" x2="125" y2="35" />
-          </g>
-        </svg>
-      );
-    case "storm":
-      return (
-        <svg viewBox="0 0 160 160" className="weather-icon-svg">
-          <path d="M45 104c-15 0-27-11-27-25s12-25 27-25c4-18 20-31 39-31 22 0 40 17 41 38 14 2 25 13 25 27 0 16-13 29-29 29H45Z" />
-          <path d="m86 82-18 30h17l-11 30 34-42H91l13-18Z" />
-        </svg>
-      );
-    case "snow":
-      return (
-        <svg viewBox="0 0 160 160" className="weather-icon-svg">
-          <path d="M45 96c-15 0-27-11-27-25s12-25 27-25c4-18 20-31 39-31 22 0 40 17 41 38 14 2 25 13 25 27 0 16-13 29-29 29H45Z" />
-          <g>
-            <line x1="58" y1="116" x2="58" y2="142" />
-            <line x1="45" y1="129" x2="71" y2="129" />
-            <line x1="49" y1="120" x2="67" y2="138" />
-            <line x1="49" y1="138" x2="67" y2="120" />
-            <line x1="97" y1="116" x2="97" y2="142" />
-            <line x1="84" y1="129" x2="110" y2="129" />
-            <line x1="88" y1="120" x2="106" y2="138" />
-            <line x1="88" y1="138" x2="106" y2="120" />
-          </g>
-        </svg>
-      );
-    case "fog":
-      return (
-        <svg viewBox="0 0 160 160" className="weather-icon-svg">
-          <path d="M45 82c-15 0-27-11-27-25s12-25 27-25c4-18 20-31 39-31 22 0 40 17 41 38 14 2 25 13 25 27 0 16-13 29-29 29H45Z" />
-          <g>
-            <line x1="28" y1="106" x2="132" y2="106" />
-            <line x1="20" y1="122" x2="118" y2="122" />
-            <line x1="40" y1="138" x2="140" y2="138" />
-          </g>
-        </svg>
-      );
-    case "rain":
-      return (
-        <svg viewBox="0 0 160 160" className="weather-icon-svg">
-          <path d="M45 92c-15 0-27-11-27-25s12-25 27-25c4-18 20-31 39-31 22 0 40 17 41 38 14 2 25 13 25 27 0 16-13 29-29 29H45Z" />
-          <g>
-            <line x1="56" y1="110" x2="48" y2="138" />
-            <line x1="82" y1="110" x2="74" y2="138" />
-            <line x1="108" y1="110" x2="100" y2="138" />
-          </g>
-        </svg>
-      );
-    default:
-      return (
-        <svg viewBox="0 0 160 160" className="weather-icon-svg">
-          <path d="M45 102c-15 0-27-11-27-25s12-25 27-25c4-18 20-31 39-31 22 0 40 17 41 38 14 2 25 13 25 27 0 16-13 29-29 29H45Z" />
-        </svg>
-      );
+  useEffect(() => {
+    let cancelled = false;
+
+    METEOCON_IMPORTERS[slug]()
+      .then((module) => {
+        if (!cancelled) {
+          setIconSrc(module.default);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setIconSrc(null);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [slug]);
+
+  if (!iconSrc) {
+    return null;
   }
+
+  return <Image src={iconSrc} alt="" className="weather-icon-svg" fill unoptimized sizes="120px" />;
 }
 
 function FroniusRealtimePanel({ electrical }: { electrical?: ElectricalMetrics }) {
@@ -690,5 +663,48 @@ function weatherVariant(code: number | null) {
       return "storm";
     default:
       return "cloud";
+  }
+}
+
+function meteoconSlugFromWeatherCode(code: number | null): MeteoconSlug {
+  switch (code) {
+    case 0:
+      return "clear-day";
+    case 1:
+    case 2:
+      return "partly-cloudy-day";
+    case 3:
+      return "overcast-day";
+    case 45:
+    case 48:
+      return "fog-day";
+    case 51:
+    case 53:
+    case 55:
+    case 56:
+    case 57:
+      return "drizzle";
+    case 61:
+    case 63:
+    case 65:
+    case 66:
+    case 67:
+    case 80:
+    case 81:
+    case 82:
+      return "overcast-day-rain";
+    case 71:
+    case 73:
+    case 75:
+    case 77:
+    case 85:
+    case 86:
+      return "snow";
+    case 95:
+    case 96:
+    case 99:
+      return "thunderstorms-day-rain";
+    default:
+      return "overcast";
   }
 }

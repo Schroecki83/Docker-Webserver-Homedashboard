@@ -285,12 +285,9 @@ body {
 .weather-icon-svg {
   width: auto;
   height: 100%;
+  max-width: 100%;
   max-height: 100%;
-  fill: none;
-  stroke: rgba(232, 238, 245, 0.95);
-  stroke-linecap: round;
-  stroke-linejoin: round;
-  stroke-width: 8;
+  object-fit: contain;
 }
 
 .weather-card-header {

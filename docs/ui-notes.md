@@ -11,3 +11,9 @@
 ### Dead CSS Cleanup
 
 - Removed unused `.weather-panel-time` selectors from `src/app/globals.css`.
+
+### Weather Icon Integration
+
+- Replaced inline hand-written weather SVGs with animated Meteocons SVG assets from `@meteocons/svg`.
+- Added Open-Meteo weather code to Meteocons icon slug mapping in `src/app/DashboardClient.tsx`.
+- Weather card icon backdrop now renders imported animated SVG files via Next.js image rendering.
