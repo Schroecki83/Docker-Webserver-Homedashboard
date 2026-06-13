@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import { useEffect, useMemo, useState } from "react";
-import type { ClimateReading, DashboardSnapshot, ElectricalMetrics, HeatpumpSnapshot } from "@/lib/types";
+import type { ClimateReading, DashboardSnapshot, ElectricalMetrics, HeatpumpSnapshot, WeatherForecast } from "@/lib/types";
 
 type ActiveTab = "shelly" | "pv" | "heatpump";
 
@@ -44,6 +44,7 @@ export function DashboardClient() {
 
   const heatpumpRows = useMemo(() => mapHeatpumpRows(snapshot?.heatpump), [snapshot?.heatpump]);
   const temperatureRows = useMemo(() => mapTemperatureRows(snapshot?.heatpump, snapshot?.climate ?? []).slice(0, 4), [snapshot?.heatpump, snapshot?.climate]);
+  const weather = snapshot?.weather;
 
   return (
     <main className="dash-shell">
@@ -76,25 +77,32 @@ export function DashboardClient() {
 
         {activeTab === "shelly" ? (
           <section className="tab-panel tab-panel-dashboard" aria-live="polite">
-            <h2>Temperatur</h2>
+            <h2>Dashboard</h2>
             {snapshotError ? <p className="state-line error">{snapshotError}</p> : null}
 
-            {temperatureRows.length === 0 ? (
-              <p className="state-line">Keine Temperaturdaten vorhanden.</p>
-            ) : (
-              <div className="temperature-grid">
-                {temperatureRows.map((row) => (
-                  <article key={row.key} className="temperature-metric">
-                    <h4>{row.label}</h4>
-                    <strong>{formatTemp(row.temperatureC)}</strong>
-                    {row.humidityPct !== null ? <p className="temperature-meta">Luftfeuchte {formatHumidity(row.humidityPct)}</p> : null}
-                    <p className="temperature-meta">
-                      <StaleBadge timestampUtc={row.timestampUtc} hasData={row.temperatureC !== null} />
-                    </p>
-                  </article>
-                ))}
-              </div>
-            )}
+            <div className="dashboard-layout">
+              <article className="panel-card temperature-panel">
+                <h3>Temperaturen</h3>
+                {temperatureRows.length === 0 ? (
+                  <p className="state-line">Keine Temperaturdaten vorhanden.</p>
+                ) : (
+                  <div className="temperature-grid">
+                    {temperatureRows.map((row) => (
+                      <article key={row.key} className="temperature-metric">
+                        <h4>{row.label}</h4>
+                        <strong>{formatTemp(row.temperatureC)}</strong>
+                        {row.humidityPct !== null ? <p className="temperature-meta">Luftfeuchte {formatHumidity(row.humidityPct)}</p> : null}
+                        <p className="temperature-meta">
+                          <StaleBadge timestampUtc={row.timestampUtc} hasData={row.temperatureC !== null} />
+                        </p>
+                      </article>
+                    ))}
+                  </div>
+                )}
+              </article>
+
+              <WeatherForecastPanel forecast={weather} />
+            </div>
           </section>
         ) : activeTab === "pv" ? (
           <section className="tab-panel tab-panel-fronius" aria-live="polite">
@@ -128,6 +136,127 @@ export function DashboardClient() {
       </section>
     </main>
   );
+}
+
+function WeatherForecastPanel({ forecast }: { forecast?: WeatherForecast }) {
+  return (
+    <article className="panel-card weather-panel">
+      <div className="weather-panel-header">
+        <h3>Wettervorhersage</h3>
+      </div>
+
+      {!forecast || forecast.days.length === 0 ? (
+        <p className="state-line">Keine Wettervorhersage vorhanden.</p>
+      ) : (
+        <div className="weather-grid">
+          {forecast.days.map((day) => (
+            <article key={day.date} className={`weather-card weather-card-${weatherVariant(day.weatherCode)}`}>
+              <div className="weather-card-backdrop" aria-hidden="true">
+                <WeatherConditionIcon code={day.weatherCode} />
+              </div>
+
+              <div className="weather-card-header">
+                <p>{formatForecastWeekday(day.date)}</p>
+                <span>{formatForecastDate(day.date)}</span>
+              </div>
+
+              <strong className="weather-card-condition">{describeWeatherCode(day.weatherCode)}</strong>
+
+              <div className="weather-card-temps">
+                <span className="weather-temp-max">{formatTemp(day.temperatureMaxC)}</span>
+                <span className="weather-temp-min">{formatTemp(day.temperatureMinC)}</span>
+              </div>
+
+              <dl className="weather-card-stats">
+                <div>
+                  <dt>Regen</dt>
+                  <dd>{formatPercent(day.precipitationProbabilityPct)}</dd>
+                </div>
+                <div>
+                  <dt>Wind</dt>
+                  <dd>{formatWind(day.windSpeedMaxKmh)}</dd>
+                </div>
+              </dl>
+            </article>
+          ))}
+        </div>
+      )}
+    </article>
+  );
+}
+
+function WeatherConditionIcon({ code }: { code: number | null }) {
+  const variant = weatherVariant(code);
+
+  switch (variant) {
+    case "clear":
+      return (
+        <svg viewBox="0 0 160 160" className="weather-icon-svg">
+          <circle cx="80" cy="80" r="28" />
+          <g>
+            <line x1="80" y1="16" x2="80" y2="36" />
+            <line x1="80" y1="124" x2="80" y2="144" />
+            <line x1="16" y1="80" x2="36" y2="80" />
+            <line x1="124" y1="80" x2="144" y2="80" />
+            <line x1="35" y1="35" x2="49" y2="49" />
+            <line x1="111" y1="111" x2="125" y2="125" />
+            <line x1="35" y1="125" x2="49" y2="111" />
+            <line x1="111" y1="49" x2="125" y2="35" />
+          </g>
+        </svg>
+      );
+    case "storm":
+      return (
+        <svg viewBox="0 0 160 160" className="weather-icon-svg">
+          <path d="M45 104c-15 0-27-11-27-25s12-25 27-25c4-18 20-31 39-31 22 0 40 17 41 38 14 2 25 13 25 27 0 16-13 29-29 29H45Z" />
+          <path d="m86 82-18 30h17l-11 30 34-42H91l13-18Z" />
+        </svg>
+      );
+    case "snow":
+      return (
+        <svg viewBox="0 0 160 160" className="weather-icon-svg">
+          <path d="M45 96c-15 0-27-11-27-25s12-25 27-25c4-18 20-31 39-31 22 0 40 17 41 38 14 2 25 13 25 27 0 16-13 29-29 29H45Z" />
+          <g>
+            <line x1="58" y1="116" x2="58" y2="142" />
+            <line x1="45" y1="129" x2="71" y2="129" />
+            <line x1="49" y1="120" x2="67" y2="138" />
+            <line x1="49" y1="138" x2="67" y2="120" />
+            <line x1="97" y1="116" x2="97" y2="142" />
+            <line x1="84" y1="129" x2="110" y2="129" />
+            <line x1="88" y1="120" x2="106" y2="138" />
+            <line x1="88" y1="138" x2="106" y2="120" />
+          </g>
+        </svg>
+      );
+    case "fog":
+      return (
+        <svg viewBox="0 0 160 160" className="weather-icon-svg">
+          <path d="M45 82c-15 0-27-11-27-25s12-25 27-25c4-18 20-31 39-31 22 0 40 17 41 38 14 2 25 13 25 27 0 16-13 29-29 29H45Z" />
+          <g>
+            <line x1="28" y1="106" x2="132" y2="106" />
+            <line x1="20" y1="122" x2="118" y2="122" />
+            <line x1="40" y1="138" x2="140" y2="138" />
+          </g>
+        </svg>
+      );
+    case "rain":
+      return (
+        <svg viewBox="0 0 160 160" className="weather-icon-svg">
+          <path d="M45 92c-15 0-27-11-27-25s12-25 27-25c4-18 20-31 39-31 22 0 40 17 41 38 14 2 25 13 25 27 0 16-13 29-29 29H45Z" />
+          <g>
+            <line x1="56" y1="110" x2="48" y2="138" />
+            <line x1="82" y1="110" x2="74" y2="138" />
+            <line x1="108" y1="110" x2="100" y2="138" />
+          </g>
+        </svg>
+      );
+    default:
+      return (
+        <svg viewBox="0 0 160 160" className="weather-icon-svg">
+          <path d="M45 102c-15 0-27-11-27-25s12-25 27-25c4-18 20-31 39-31 22 0 40 17 41 38 14 2 25 13 25 27 0 16-13 29-29 29H45Z" />
+        </svg>
+      );
+  }
 }
 
 function FroniusRealtimePanel({ electrical }: { electrical?: ElectricalMetrics }) {
@@ -435,4 +564,131 @@ function formatBatteryUnit(soc: number | null, capacityKwh: number | null) {
   }
 
   return "kWh";
+}
+
+function formatForecastWeekday(dateValue: string) {
+  const date = new Date(`${dateValue}T12:00:00`);
+  if (Number.isNaN(date.getTime())) {
+    return dateValue;
+  }
+
+  return new Intl.DateTimeFormat("de-AT", {
+    weekday: "short",
+    timeZone: "Europe/Vienna",
+  }).format(date);
+}
+
+function formatForecastDate(dateValue: string) {
+  const date = new Date(`${dateValue}T12:00:00`);
+  if (Number.isNaN(date.getTime())) {
+    return dateValue;
+  }
+
+  return new Intl.DateTimeFormat("de-AT", {
+    day: "2-digit",
+    month: "2-digit",
+    timeZone: "Europe/Vienna",
+  }).format(date);
+}
+
+function formatPercent(value: number | null) {
+  if (value === null || Number.isNaN(value)) {
+    return "--";
+  }
+
+  return `${Math.round(value)} %`;
+}
+
+function formatWind(value: number | null) {
+  if (value === null || Number.isNaN(value)) {
+    return "--";
+  }
+
+  return `${Math.round(value)} km/h`;
+}
+
+function describeWeatherCode(code: number | null) {
+  switch (code) {
+    case 0:
+      return "Klar";
+    case 1:
+    case 2:
+      return "Leicht bewoelkt";
+    case 3:
+      return "Bedeckt";
+    case 45:
+    case 48:
+      return "Nebel";
+    case 51:
+    case 53:
+    case 55:
+    case 56:
+    case 57:
+      return "Niesel";
+    case 61:
+    case 63:
+    case 65:
+    case 66:
+    case 67:
+      return "Regen";
+    case 71:
+    case 73:
+    case 75:
+    case 77:
+      return "Schnee";
+    case 80:
+    case 81:
+    case 82:
+      return "Schauer";
+    case 85:
+    case 86:
+      return "Schneeschauer";
+    case 95:
+    case 96:
+    case 99:
+      return "Gewitter";
+    default:
+      return "Unbekannt";
+  }
+}
+
+function weatherVariant(code: number | null) {
+  switch (code) {
+    case 0:
+      return "clear";
+    case 1:
+    case 2:
+    case 3:
+      return "cloud";
+    case 45:
+    case 48:
+      return "fog";
+    case 51:
+    case 53:
+    case 55:
+    case 56:
+    case 57:
+    case 61:
+    case 63:
+    case 65:
+    case 66:
+    case 67:
+    case 80:
+    case 81:
+    case 82:
+      return "rain";
+    case 71:
+    case 73:
+    case 75:
+    case 77:
+    case 85:
+    case 86:
+      return "snow";
+    case 95:
+    case 96:
+    case 99:
+      return "storm";
+    default:
+      return "cloud";
+  }
 }

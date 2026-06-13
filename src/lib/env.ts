@@ -17,6 +17,8 @@ const envSchema = z.object({
   SHELLY_GEN1_DEVICES: csvList,
   SHELLY_CLOUD_API_URL: z.string().url().default("https://iot.shelly.cloud/iot"),
   SHELLY_CLOUD_AUTH_TOKEN: z.string().default(""),
+  WEATHER_LAT: z.coerce.number().min(-90).max(90).default(48.117930872502676),
+  WEATHER_LON: z.coerce.number().min(-180).max(180).default(14.86961950661282),
   PORT: z.coerce.number().int().positive().default(3001),
 });
 

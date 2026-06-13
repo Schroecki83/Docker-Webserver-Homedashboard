@@ -2,6 +2,7 @@ FROM node:22-alpine AS deps
 WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci --ignore-scripts
+RUN npm install --no-save lightningcss-linux-x64-musl@1.32.0
 
 FROM node:22-alpine AS builder
 WORKDIR /app

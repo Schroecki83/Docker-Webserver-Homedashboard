@@ -10,6 +10,8 @@ describe("env", () => {
     process.env.LUXTRONIC_PASSWORD = "9999";
     process.env.SHELLY_HT_DEVICES = "192.168.70.34,192.168.70.40";
     process.env.SHELLY_GEN1_DEVICES = "192.168.70.97";
+    process.env.WEATHER_LAT = "48.117930872502676";
+    process.env.WEATHER_LON = "14.86961950661282";
   });
 
   it("loads required values", async () => {
@@ -18,5 +20,7 @@ describe("env", () => {
 
     expect(value.LUXTRONIC_PASSWORD).toBe("9999");
     expect(value.SHELLY_HT_DEVICES).toEqual(["192.168.70.34", "192.168.70.40"]);
+    expect(value.WEATHER_LAT).toBeCloseTo(48.117930872502676);
+    expect(value.WEATHER_LON).toBeCloseTo(14.86961950661282);
   });
 });

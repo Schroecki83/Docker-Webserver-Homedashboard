@@ -11,6 +11,7 @@ import { fetchPowerFlow } from "@/lib/providers/fronius";
 import { fetchAllShelly25 } from "@/lib/providers/shelly-25";
 import { fetchLuxtronicSnapshot } from "@/lib/providers/luxtronic-ws";
 import { fetchShellyCloudDevices } from "@/lib/providers/shelly-cloud";
+import { fetchWeatherForecast } from "@/lib/providers/open-meteo";
 import { env } from "@/lib/env";
 import { log } from "@/lib/logger";
 import type { DashboardSnapshot, SourceMetadata, SourceState } from "@/lib/types";
@@ -35,11 +36,12 @@ async function settle<T>(label: string, fn: () => Promise<T>): Promise<{ ok: tru
 export async function buildSnapshot(): Promise<DashboardSnapshot> {
   const { SHELLY_GEN1_DEVICES, LUXTRONIC_HOST, LUXTRONIC_PORT, LUXTRONIC_PASSWORD } = env();
 
-  const [froniusResult, shelly25Result, luxtronicResult, shellyCloudResult] = await Promise.all([
+  const [froniusResult, shelly25Result, luxtronicResult, shellyCloudResult, weatherResult] = await Promise.all([
     settle("fronius", fetchPowerFlow),
     settle("shelly.25", () => fetchAllShelly25(SHELLY_GEN1_DEVICES)),
     settle("luxtronic", () => fetchLuxtronicSnapshot(LUXTRONIC_HOST, LUXTRONIC_PORT, LUXTRONIC_PASSWORD)),
     settle("shelly.cloud", fetchShellyCloudDevices),
+    settle("weather", fetchWeatherForecast),
   ]);
 
   const sources: SourceMetadata[] = [];
@@ -79,12 +81,23 @@ export async function buildSnapshot(): Promise<DashboardSnapshot> {
     sources.push({ source: "luxtronic", state: "error", updatedAt: new Date().toISOString(), message: luxtronicResult.message });
   }
 
+  if (weatherResult.ok) {
+    sources.push({
+      source: "weather",
+      state: ageState(weatherResult.value.updatedAt),
+      updatedAt: weatherResult.value.updatedAt,
+    });
+  } else {
+    sources.push({ source: "weather", state: "error", updatedAt: new Date().toISOString(), message: weatherResult.message });
+  }
+
   // Climate data: cloud only
   const climate = shellyCloudResult.ok ? shellyCloudResult.value : [];
 
   return {
     electrical: froniusResult.ok ? froniusResult.value : undefined,
     heatpump: luxtronicResult.ok ? luxtronicResult.value : undefined,
+    weather: weatherResult.ok ? weatherResult.value : undefined,
     climate,
     shutters: shelly25Result.ok ? shelly25Result.value : [],
     sources,

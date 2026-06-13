@@ -1,10 +1,27 @@
 export type SourceState = "ok" | "stale" | "error";
 
 export interface SourceMetadata {
-  source: "fronius" | "shelly" | "luxtronic";
+  source: "fronius" | "shelly" | "luxtronic" | "weather";
   state: SourceState;
   updatedAt: string;
   message?: string;
+}
+
+export interface WeatherForecastDay {
+  date: string;
+  weatherCode: number | null;
+  temperatureMinC: number | null;
+  temperatureMaxC: number | null;
+  precipitationProbabilityPct: number | null;
+  windSpeedMaxKmh: number | null;
+}
+
+export interface WeatherForecast {
+  latitude: number;
+  longitude: number;
+  timezone: string;
+  updatedAt: string;
+  days: WeatherForecastDay[];
 }
 
 export interface ElectricalMetrics {
@@ -56,6 +73,7 @@ export interface ShutterReading {
 export interface DashboardSnapshot {
   electrical?: ElectricalMetrics;
   heatpump?: HeatpumpSnapshot;
+  weather?: WeatherForecast;
   climate: ClimateReading[];
   shutters: ShutterReading[];
   sources: SourceMetadata[];
