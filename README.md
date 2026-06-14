@@ -64,8 +64,14 @@ Notes:
 - Full test execution requires a Node.js runtime that includes `node:sqlite`.
 - The dashboard now uses a harmonized color palette between the Temperaturen and Wettervorhersage cards.
 - Wettervorhersage icons are rendered with animated Meteocons SVG assets.
-- Tab row now contains 4 entries (Dashboard, Fronius, Heizung, Shelly App).
-- Shelly App opens via strict `shelly://` deep link without Play Store fallback in dashboard code.
+- Tab row contains 3 entries (Dashboard, Fronius, Heizung).
+
+## Tablet / Edge-to-Edge Mode
+
+- The app is configured for edge-to-edge rendering on Android-capable browsers via `viewport-fit=cover`.
+- Safe area insets are applied in CSS using `env(safe-area-inset-*)`.
+- A web manifest is provided at `GET /manifest.webmanifest` with `display: standalone` and `orientation: landscape`.
+- For kiosk-style fullscreen behavior on Android tablets, add the site to the home screen and launch it from that icon.
 
 ## Environment Variables
 
@@ -99,6 +105,5 @@ Notes:
 - [docs/fronius-mapping.md](docs/fronius-mapping.md)
 - [docs/open-meteo-weather-icon-mapping.md](docs/open-meteo-weather-icon-mapping.md)
 - [docs/shelly-cloud-integration.md](docs/shelly-cloud-integration.md)
-- [docs/shelly-launcher.md](docs/shelly-launcher.md)
 - [docs/shelly-ht-diagnostics.md](docs/shelly-ht-diagnostics.md)
 - [docs/ui-notes.md](docs/ui-notes.md)

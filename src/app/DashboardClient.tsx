@@ -4,7 +4,7 @@ import Image from "next/image";
 import { useEffect, useMemo, useState } from "react";
 import type { ClimateReading, DashboardSnapshot, ElectricalMetrics, HeatpumpSnapshot, WeatherForecast } from "@/lib/types";
 
-type ActiveTab = "shelly" | "pv" | "heatpump";
+type ActiveTab = "dashboard" | "pv" | "heatpump";
 
 type MeteoconImporter = () => Promise<{ default: string }>;
 
@@ -23,7 +23,7 @@ const METEOCON_IMPORTERS = {
 type MeteoconSlug = keyof typeof METEOCON_IMPORTERS;
 
 export function DashboardClient() {
-  const [activeTab, setActiveTab] = useState<ActiveTab>("shelly");
+  const [activeTab, setActiveTab] = useState<ActiveTab>("dashboard");
   const [snapshot, setSnapshot] = useState<DashboardSnapshot | null>(null);
   const [snapshotError, setSnapshotError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -62,37 +62,14 @@ export function DashboardClient() {
   const temperatureRows = useMemo(() => mapTemperatureRows(snapshot?.heatpump, snapshot?.climate ?? []).slice(0, 4), [snapshot?.heatpump, snapshot?.climate]);
   const weather = snapshot?.weather;
 
-  const openShellyApp = () => {
-    if (typeof window === "undefined") {
-      return;
-    }
-
-    if (!/Android/i.test(window.navigator.userAgent)) {
-      return;
-    }
-
-    const intentByScheme = "intent://#Intent;scheme=shelly;package=cloud.shelly.smartcontrol;end";
-    const intentByPackage = "intent:#Intent;action=android.intent.action.MAIN;category=android.intent.category.LAUNCHER;package=cloud.shelly.smartcontrol;end";
-    const uriScheme = "shelly://";
-
-    const launch = (target: string) => {
-      window.location.href = target;
-    };
-
-    // Try multiple app-only launch formats to maximize compatibility across Android browsers.
-    launch(intentByScheme);
-    window.setTimeout(() => launch(intentByPackage), 180);
-    window.setTimeout(() => launch(uriScheme), 360);
-  };
-
   return (
     <main className="dash-shell">
       <section className={`dash-frame dash-frame-${activeTab}`}>
         <nav className="tab-row" aria-label="Dashboard Tabs">
           <button
             type="button"
-            className={activeTab === "shelly" ? "tab-btn tab-dashboard active" : "tab-btn tab-dashboard"}
-            onClick={() => setActiveTab("shelly")}
+            className={activeTab === "dashboard" ? "tab-btn tab-dashboard active" : "tab-btn tab-dashboard"}
+            onClick={() => setActiveTab("dashboard")}
           >
             Dashboard
           </button>
@@ -110,19 +87,11 @@ export function DashboardClient() {
           >
             Heizung
           </button>
-          <button
-            type="button"
-            className="tab-btn tab-shelly tab-intent-link"
-            onClick={openShellyApp}
-            title="Shelly App auf Android öffnen"
-          >
-            Shelly App
-          </button>
         </nav>
 
         {isLoading ? <p className="state-line">Lade Live-Daten...</p> : null}
 
-        {activeTab === "shelly" ? (
+        {activeTab === "dashboard" ? (
           <section className="tab-panel tab-panel-dashboard" aria-live="polite">
             <h2>Dashboard</h2>
             {snapshotError ? <p className="state-line error">{snapshotError}</p> : null}

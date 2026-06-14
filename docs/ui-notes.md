@@ -1,5 +1,13 @@
 # UI Notes
 
+## 2026-06-14
+
+### Android Edge-to-Edge Support
+
+- Added viewport metadata mapping in `src/app/layout.tsx` (`viewportFit: "cover"`, theme color, and mobile web app capability metadata).
+- Added standalone manifest route in `src/app/manifest.ts` for home-screen launches (`display: "standalone"`, landscape orientation).
+- Added safe-area inset padding in `src/app/globals.css` to keep layout usable around tablet system UI cutouts.
+
 ## 2026-06-13
 
 ### Dashboard Color Alignment
@@ -18,8 +26,7 @@
 - Added Open-Meteo weather code to Meteocons icon slug mapping in `src/app/DashboardClient.tsx`.
 - Weather card icon backdrop now renders imported animated SVG files via Next.js image rendering.
 
-### Shelly App Launcher Tab
+### Tab Row Simplification
 
-- Added Shelly App as a 4th tab item directly in the main tab row (right of Heizung).
-- Updated tablet/mobile tab row behavior from 3 to 4 columns with smaller tab width and tighter typography.
-- Switched Shelly launcher action to strict `shelly://` deep link without an in-app Play Store fallback URL.
+- Removed the Shelly App tab and all related launch behavior from the main navigation.
+- Restored responsive tab row behavior to a 3-column layout (Dashboard, Fronius, Heizung).
