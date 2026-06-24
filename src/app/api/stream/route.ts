@@ -3,9 +3,9 @@ import { log } from "@/lib/logger";
 
 export const dynamic = "force-dynamic";
 
-// 10 minutes: Open-Meteo free tier allows 10k requests/day (~7/min).
-// Multiple clients every 2 min would exceed limits; 10 min is safe and weather doesn't change that fast.
-const INTERVAL_MS = 600_000;
+// 1 hour: Open-Meteo free tier allows 10k requests/day (~7/min).
+// Weather forecast doesn't change frequently; 1 hour balances freshness with minimal API calls.
+const INTERVAL_MS = 3_600_000;
 
 export async function GET() {
   const encoder = new TextEncoder();
