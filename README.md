@@ -4,6 +4,13 @@ Home energy dashboard for Raspberry Pi using Next.js.
 
 Stable release: `1.0.0`
 
+## Aktueller Laufzeitstatus (2026-08-31)
+
+- Status: aktiv
+- Container: `home-dashboard` läuft aktuell und ist an Host-Port `3001` gebunden
+- Laufzeitmodell: Next.js App mit SSE-Stream und SQLite-Historie für Fronius/Luxtronic
+- Verfügbar als LAN-Dashboard unter `http://192.168.70.26:3001`
+
 Current data sources:
 - Fronius GEN24 (local inverter API)
 - Fronius Smart Meter (daily import/export deltas from local counters)
