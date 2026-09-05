@@ -26,9 +26,11 @@ describe("history store", () => {
   it("persists and returns heatpump snapshots in order", () => {
     const dir = mkdtempSync(join(tmpdir(), "heatpump-history-"));
     const store = createHistoryStore(join(dir, "history.db"));
+    const firstTimestamp = new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString();
+    const secondTimestamp = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
 
-    store.save(makeSnapshot("2026-04-10T00:00:00.000Z", 20.4));
-    store.save(makeSnapshot("2026-04-11T00:00:00.000Z", 21.4));
+    store.save(makeSnapshot(firstTimestamp, 20.4));
+    store.save(makeSnapshot(secondTimestamp, 21.4));
 
     const result = store.getHistory(30);
     expect(result).toHaveLength(2);

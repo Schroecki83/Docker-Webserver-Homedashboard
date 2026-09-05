@@ -1,6 +1,5 @@
-import { mkdirSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname } from "node:path";
-import { DatabaseSync } from "node:sqlite";
 
 import { env } from "@/lib/env";
 import type { HeatpumpSnapshot } from "@/lib/types";
@@ -16,111 +15,48 @@ export function todayUtcDate(): string {
   return new Date().toISOString().slice(0, 10);
 }
 
-interface HeatpumpHistoryRow {
-  timestamp_utc: string;
-  vorlauf_c: number | null;
-  ruecklauf_c: number | null;
-  ruecklauf_soll_c: number | null;
-  heissgas_c: number | null;
-  aussentemperatur_c: number | null;
-  warmwasser_ist_c: number | null;
-  warmwasser_soll_c: number | null;
-  waermequelle_ein_c: number | null;
-  waermequelle_aus_c: number | null;
+function loadJsonRecord(filePath: string): Record<string, HeatpumpSnapshot> {
+  if (!existsSync(filePath)) {
+    return {};
+  }
+
+  try {
+    const raw = readFileSync(filePath, "utf8");
+    const data = JSON.parse(raw) as Record<string, HeatpumpSnapshot>;
+    return data && typeof data === "object" ? data : {};
+  } catch {
+    return {};
+  }
 }
 
-function mapRowToSnapshot(row: HeatpumpHistoryRow): HeatpumpSnapshot {
-  return {
-    timestampUtc: row.timestamp_utc,
-    vorlauf_c: row.vorlauf_c,
-    ruecklauf_c: row.ruecklauf_c,
-    ruecklauf_soll_c: row.ruecklauf_soll_c,
-    heissgas_c: row.heissgas_c,
-    aussentemperatur_c: row.aussentemperatur_c,
-    warmwasser_ist_c: row.warmwasser_ist_c,
-    warmwasser_soll_c: row.warmwasser_soll_c,
-    waermequelle_ein_c: row.waermequelle_ein_c,
-    waermequelle_aus_c: row.waermequelle_aus_c,
-  };
+function saveJsonRecord(filePath: string, values: Record<string, HeatpumpSnapshot>) {
+  writeFileSync(filePath, JSON.stringify(values, null, 2));
 }
 
 export function createHistoryStore(dbPath: string) {
   mkdirSync(dirname(dbPath), { recursive: true });
-  const db = new DatabaseSync(dbPath);
-
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS heatpump_history (
-      timestamp_utc TEXT PRIMARY KEY,
-      vorlauf_c REAL,
-      ruecklauf_c REAL,
-      ruecklauf_soll_c REAL,
-      heissgas_c REAL,
-      aussentemperatur_c REAL,
-      warmwasser_ist_c REAL,
-      warmwasser_soll_c REAL,
-      waermequelle_ein_c REAL,
-      waermequelle_aus_c REAL
-    )
-  `);
-
-  const insertStmt = db.prepare(`
-    INSERT OR REPLACE INTO heatpump_history (
-      timestamp_utc,
-      vorlauf_c,
-      ruecklauf_c,
-      ruecklauf_soll_c,
-      heissgas_c,
-      aussentemperatur_c,
-      warmwasser_ist_c,
-      warmwasser_soll_c,
-      waermequelle_ein_c,
-      waermequelle_aus_c
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `);
-
-  const queryStmt = db.prepare(`
-    SELECT
-      timestamp_utc,
-      vorlauf_c,
-      ruecklauf_c,
-      ruecklauf_soll_c,
-      heissgas_c,
-      aussentemperatur_c,
-      warmwasser_ist_c,
-      warmwasser_soll_c,
-      waermequelle_ein_c,
-      waermequelle_aus_c
-    FROM heatpump_history
-    WHERE timestamp_utc >= ?
-    ORDER BY timestamp_utc ASC
-  `);
-
-  const pruneStmt = db.prepare(`DELETE FROM heatpump_history WHERE timestamp_utc < ?`);
 
   return {
     save(snapshot: HeatpumpSnapshot, retentionDays = RETENTION_DAYS) {
-      insertStmt.run(
-        snapshot.timestampUtc,
-        snapshot.vorlauf_c,
-        snapshot.ruecklauf_c,
-        snapshot.ruecklauf_soll_c,
-        snapshot.heissgas_c,
-        snapshot.aussentemperatur_c,
-        snapshot.warmwasser_ist_c,
-        snapshot.warmwasser_soll_c,
-        snapshot.waermequelle_ein_c,
-        snapshot.waermequelle_aus_c,
-      );
-      pruneStmt.run(retentionCutoffIso(retentionDays));
+      const records = loadJsonRecord(dbPath);
+      records[snapshot.timestampUtc] = snapshot;
+
+      const cutoff = new Date(retentionCutoffIso(retentionDays)).getTime();
+      const filtered = Object.values(records).filter((entry) => new Date(entry.timestampUtc).getTime() >= cutoff);
+      const nextRecords = Object.fromEntries(filtered.map((entry) => [entry.timestampUtc, entry]));
+      saveJsonRecord(dbPath, nextRecords);
     },
 
     getHistory(days = RETENTION_DAYS): HeatpumpSnapshot[] {
-      const rows = queryStmt.all(retentionCutoffIso(days)) as unknown as HeatpumpHistoryRow[];
-      return rows.map(mapRowToSnapshot);
+      const cutoff = new Date(retentionCutoffIso(days)).getTime();
+      const records = loadJsonRecord(dbPath);
+      return Object.values(records)
+        .filter((entry) => new Date(entry.timestampUtc).getTime() >= cutoff)
+        .sort((left, right) => left.timestampUtc.localeCompare(right.timestampUtc));
     },
 
     close() {
-      db.close();
+      // no-op: file-backed storage is self-contained and does not need an explicit handle
     },
   };
 }

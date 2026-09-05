@@ -40,6 +40,7 @@ describe("mapPowerFlow", () => {
       batteryPowerW: -3117.62,
       pvEnergyTodayKwh: 18.42,
       loadEnergyTodayKwh: null,
+      gridImportTodayKwh: null,
       gridExportTodayKwh: null,
       autonomyPct: 99.92,
       selfConsumptionPct: 100,
