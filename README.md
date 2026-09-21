@@ -4,7 +4,7 @@ Home energy dashboard for Raspberry Pi using Next.js.
 
 Stable release: `1.0.0`
 
-## Aktueller Laufzeitstatus (2026-08-31)
+## Aktueller Laufzeitstatus (2026-09-21)
 
 - Status: aktiv
 - Container: `home-dashboard` läuft aktuell und ist an Host-Port `3001` gebunden
