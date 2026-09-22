@@ -5,6 +5,10 @@ export const metadata: Metadata = {
   title: "Home Dashboard",
   description: "Home dashboard for Fronius, Shelly, and Luxtronic devices.",
   manifest: "/manifest.webmanifest",
+  icons: {
+    icon: "/favicon.ico",
+    shortcut: "/favicon.ico",
+  },
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
