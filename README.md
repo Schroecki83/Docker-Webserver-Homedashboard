@@ -4,7 +4,7 @@ Home energy dashboard for Raspberry Pi using Next.js.
 
 Stable release: `1.0.0`
 
-## Aktueller Laufzeitstatus (2026-09-21)
+## Aktueller Laufzeitstatus (2026-09-25)
 
 - Status: aktiv
 - Container: `home-dashboard` läuft aktuell und ist an Host-Port `3001` gebunden
@@ -16,6 +16,18 @@ Current data sources:
 - Fronius Smart Meter (daily import/export deltas from local counters)
 - Luxtronic heatpump (LAN)
 - Shelly H&T (Shelly Cloud API only)
+
+## Docker-Betrieb
+
+Der Container `home-dashboard` wird aus dem lokalen `Dockerfile` gebaut, läuft standardmäßig als UID/GID `1000:1000` und startet mit `restart: unless-stopped`. Host-Port `3001` wird auf Container-Port `3001` abgebildet. Das Verzeichnis `./data` wird nach `/app/data` gemountet und enthält die persistenten SQLite-Historien. Die Zugangsdaten für Fronius, Luxtronic und Shelly werden ausschließlich über `.env` an den Container übergeben.
+
+Der Container verwendet für DNS die Resolver `1.1.1.1` und `8.8.8.8`. Nach Änderungen an Code oder Konfiguration:
+
+```bash
+docker compose up -d --build
+docker compose ps
+curl -fsS http://localhost:3001/api/health
+```
 
 ## Runtime Model
 
