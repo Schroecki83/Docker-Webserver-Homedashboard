@@ -1,0 +1,70 @@
+{
+  "mode": "mapped",
+  "include": [
+    "BSH.Common.Setting.PowerState",
+    "BSH.Common.Status.OperationState",
+    "BSH.Common.Status.RemoteControlStartAllowed",
+    "BSH.Common.Status.RemoteControlActive",
+    "BSH.Common.Status.DoorState",
+    "BSH.Common.Root.ActiveProgram",
+    "BSH.Common.Option.ProgramProgress",
+    "BSH.Common.Option.RemainingProgramTime"
+  ],
+  "keys": {
+    "BSH.Common.Setting.PowerState": {
+      "label": "Netzschalter",
+      "values": {
+        "BSH.Common.EnumType.PowerState.On": "Ein",
+        "BSH.Common.EnumType.PowerState.Off": "Aus",
+        "BSH.Common.EnumType.PowerState.Standby": "Standby"
+      }
+    },
+    "BSH.Common.Status.OperationState": {
+      "label": "Betriebszustand",
+      "values": {
+        "BSH.Common.EnumType.OperationState.Inactive": "Inaktiv",
+        "BSH.Common.EnumType.OperationState.Ready": "Bereit",
+        "BSH.Common.EnumType.OperationState.DelayedStart": "Startverzögerung",
+        "BSH.Common.EnumType.OperationState.Run": "Läuft",
+        "BSH.Common.EnumType.OperationState.Pause": "Pausiert",
+        "BSH.Common.EnumType.OperationState.ActionRequired": "Aktion erforderlich",
+        "BSH.Common.EnumType.OperationState.Finished": "Fertig",
+        "BSH.Common.EnumType.OperationState.Error": "Fehler",
+        "BSH.Common.EnumType.OperationState.Aborting": "Abbruch"
+      }
+    },
+    "BSH.Common.Status.RemoteControlStartAllowed": { "label": "Fernstart erlaubt" },
+    "BSH.Common.Status.RemoteControlActive": { "label": "Fernsteuerung aktiv" },
+    "BSH.Common.Status.DoorState": {
+      "label": "Tür",
+      "values": {
+        "BSH.Common.EnumType.DoorState.Open": "Offen",
+        "BSH.Common.EnumType.DoorState.Closed": "Geschlossen",
+        "BSH.Common.EnumType.DoorState.Locked": "Verriegelt"
+      }
+    },
+    "BSH.Common.Root.ActiveProgram": {
+      "label": "Laufendes Programm",
+      "values": {
+        "Dishwasher.Program.Auto1": "Auto 35-45 °C",
+        "Dishwasher.Program.Auto2": "Auto 45-65 °C",
+        "Dishwasher.Program.Auto3": "Auto 65-75 °C",
+        "Dishwasher.Program.Eco50": "Eco 50 °C",
+        "Dishwasher.Program.Quick45": "Schnell 45 °C",
+        "Dishwasher.Program.Intensiv70": "Intensiv 70 °C",
+        "Dishwasher.Program.PreRinse": "Vorspülen",
+        "LaundryCare.Washer.Program.Cotton": "Baumwolle",
+        "LaundryCare.Washer.Program.EasyCare": "Pflegeleicht",
+        "LaundryCare.Washer.Program.Mix": "Mix",
+        "LaundryCare.Washer.Program.DelicatesSilk": "Feinwäsche/Seide",
+        "LaundryCare.Washer.Program.Wool": "Wolle",
+        "LaundryCare.Dryer.Program.Cotton": "Baumwolle",
+        "LaundryCare.Dryer.Program.Synthetic": "Synthetik",
+        "LaundryCare.Dryer.Program.Mix": "Mix"
+      }
+    },
+    "BSH.Common.Option.ProgramProgress": { "label": "Fortschritt", "unit": "%" },
+    "BSH.Common.Option.RemainingProgramTime": { "label": "Restlaufzeit", "format": "minutes" }
+  },
+  "appliances": {}
+}

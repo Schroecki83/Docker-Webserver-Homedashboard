@@ -70,6 +70,43 @@ export interface ShutterReading {
   timestampUtc: string;
 }
 
+export interface HomeConnectEntry {
+  key: string;
+  label: string;
+  value: string | number | boolean | null;
+  display: string;
+  unit: string | null;
+  source: "status" | "setting" | "program" | "option";
+}
+
+export interface HomeConnectAppliance {
+  haId: string;
+  name: string;
+  type: string;
+  brand: string;
+  vib: string;
+  connected: boolean;
+  finished: boolean;
+  entries: HomeConnectEntry[];
+  error?: string;
+}
+
+export type HomeConnectState = "ok" | "not_configured" | "unauthorized" | "error";
+
+export interface HomeConnectSnapshot {
+  state: HomeConnectState;
+  message?: string;
+  appliances: HomeConnectAppliance[];
+  fetchedAtUtc: string | null;
+}
+
+export interface HomeConnectDeviceAuth {
+  userCode: string;
+  verificationUri: string;
+  verificationUriComplete: string | null;
+  expiresAtUtc: string;
+}
+
 export interface DashboardSnapshot {
   electrical?: ElectricalMetrics;
   heatpump?: HeatpumpSnapshot;

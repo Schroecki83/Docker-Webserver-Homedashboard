@@ -126,3 +126,13 @@ Notes:
 - [docs/shelly-cloud-integration.md](docs/shelly-cloud-integration.md)
 - [docs/shelly-ht-diagnostics.md](docs/shelly-ht-diagnostics.md)
 - [docs/ui-notes.md](docs/ui-notes.md)
+## Home Connect (Tab "Haushalt", read-only)
+
+- App unter https://developer.home-connect.com anlegen (Device Flow, Scopes `IdentifyAppliance Monitor Settings`), `HOMECONNECT_CLIENT_ID` (und ggf. `_CLIENT_SECRET`) in `.env` setzen.
+- Tab "Haushalt" öffnen, "Verbinden" klicken, Code auf der angezeigten Home-Connect-Seite bestätigen. Token liegt in `data/homeconnect-token.json`.
+- Anzeige wird über `config/homeconnect-mapping.json` gesteuert (`mode: all|mapped`, `keys` mit label/unit/values/hidden, `appliances.<Typ|haId>.include` als Whitelist inkl. Reihenfolge). Datei wird bei jedem Abruf neu gelesen. Technische Key-Namen stehen als Tooltip an jedem Wert.
+- API-Limit (~1000 Calls/Tag): Cache 600 s (`HOMECONNECT_CACHE_SECONDS`), Abruf nur bei geöffnetem Tab, 15 min Pause bei HTTP 429.
+- Mapping-Felder: `include` (globale Auswahl + Reihenfolge, pro Gerät überschreibbar), `format: "minutes"` (Sekunden → min), `values` (Enum → deutscher Text).
+- Pro Gerät: Reihenfolge Netzschalter, Betriebszustand, Fernstart erlaubt, Fernsteuerung aktiv, Tür, Programm, Fortschritt, Restlaufzeit. Bei Betriebszustand `Finished` erscheint unter Marke/Typ die Marke "Programm abgeschlossen".
+- Layout: eine Spalte pro Gerät (volle Breite); bis 1100 px max. 2 Spalten, bis 640 px 1 Spalte. Die gerade rechte obere Ecke des letzten Tabs gilt für alle Touch-Geräte (`hover: none` + `pointer: coarse`) sowie bis 1100 px.
+- Steuerung ist nicht enthalten.

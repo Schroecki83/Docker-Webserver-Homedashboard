@@ -2,9 +2,10 @@
 
 import Image from "next/image";
 import { useEffect, useMemo, useState } from "react";
+import { HouseholdPanel } from "./HouseholdPanel";
 import type { ClimateReading, DashboardSnapshot, ElectricalMetrics, HeatpumpSnapshot, WeatherForecast } from "@/lib/types";
 
-type ActiveTab = "dashboard" | "pv" | "heatpump";
+type ActiveTab = "dashboard" | "pv" | "heatpump" | "household";
 
 type MeteoconImporter = () => Promise<{ default: string }>;
 
@@ -87,6 +88,13 @@ export function DashboardClient() {
           >
             Heizung
           </button>
+          <button
+            type="button"
+            className={activeTab === "household" ? "tab-btn tab-haushalt active" : "tab-btn tab-haushalt"}
+            onClick={() => setActiveTab("household")}
+          >
+            Haushalt
+          </button>
         </nav>
 
         {isLoading ? <p className="state-line">Lade Live-Daten...</p> : null}
@@ -129,6 +137,11 @@ export function DashboardClient() {
               <FroniusRealtimePanel electrical={snapshot?.electrical} />
               <FroniusDailyPanel electrical={snapshot?.electrical} />
             </div>
+          </section>
+        ) : activeTab === "household" ? (
+          <section className="tab-panel tab-panel-haushalt" aria-live="polite">
+            <h2>Haushalt</h2>
+            <HouseholdPanel />
           </section>
         ) : (
           <section className="tab-panel tab-panel-heizung" aria-live="polite">

@@ -16,6 +16,7 @@
   --tab-dashboard: #a9d6e5;
   --tab-fronius: #f4e3a3;
   --tab-heizung: #e8b4b0;
+  --tab-haushalt: #b9e4c9;
 }
 
 * {
@@ -120,6 +121,14 @@ body {
   --tab-accent: var(--tab-heizung);
 }
 
+.tab-haushalt {
+  --tab-accent: var(--tab-haushalt);
+}
+
+.tab-panel-haushalt {
+  --tab-accent: var(--tab-haushalt);
+}
+
 .tab-panel-dashboard {
   --tab-accent: var(--tab-dashboard);
 }
@@ -136,12 +145,12 @@ body {
   border-top-left-radius: 0;
 }
 
-.dash-frame-heatpump .tab-panel-heizung {
+.dash-frame-household .tab-panel-haushalt {
   border-top-right-radius: 0;
 }
 
 @media (min-width: 1101px) {
-  .dash-frame-heatpump .tab-panel-heizung {
+  .dash-frame-household .tab-panel-haushalt {
     border-top-right-radius: 22px;
   }
 }
@@ -753,7 +762,7 @@ body {
 
   .tab-row {
     display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: 0;
     align-items: stretch;
   }
@@ -936,7 +945,7 @@ body {
 @media (hover: none) and (pointer: coarse) {
   .tab-row {
     display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: 0;
     align-items: stretch;
   }
@@ -983,4 +992,92 @@ body {
   .temperature-grid {
     grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
   }
+}
+
+/* Touch-Geräte (Handy/Tablet): Tab-Leiste füllt die Breite, daher gerade Ecke unabhängig von der Viewport-Breite */
+@media (hover: none) and (pointer: coarse) {
+  .dash-frame-household .tab-panel-haushalt {
+    border-top-right-radius: 0;
+  }
+}
+
+.hc-grid {
+  display: grid;
+  width: 100%;
+  grid-template-columns: repeat(var(--hc-cols, 1), minmax(0, 1fr));
+  gap: 16px;
+}
+
+@media (max-width: 1100px) {
+  .hc-grid {
+    grid-template-columns: repeat(min(var(--hc-cols, 1), 2), minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .hc-grid {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 12px;
+  }
+
+  .hc-card {
+    padding: 14px;
+  }
+
+  .hc-card .metric-list li {
+    font-size: 0.92rem;
+  }
+
+  .hc-card .metric-list strong {
+    text-align: right;
+  }
+}
+
+.hc-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.hc-card-header h3 {
+  margin: 0;
+}
+
+.hc-sub {
+  margin: 4px 0 12px;
+  color: var(--muted);
+  font-size: 0.85rem;
+}
+
+.hc-badge {
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 2px 10px;
+  font-size: 0.75rem;
+  color: var(--muted);
+}
+
+.hc-badge.on {
+  color: var(--accent-b);
+  border-color: var(--accent-b);
+}
+
+.hc-btn {
+  border: 1px solid var(--tab-haushalt);
+  background: transparent;
+  color: var(--text);
+  border-radius: 12px;
+  padding: 10px 20px;
+  cursor: pointer;
+}
+
+.hc-code strong {
+  font-size: 1.4rem;
+  letter-spacing: 0.1em;
+}
+
+.hc-finished {
+  display: inline-block;
+  margin: -4px 0 12px;
 }
