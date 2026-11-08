@@ -3,4 +3,5 @@ node_modules
 .env
 data
 coverage
+*.tsbuildinfo
 npm-debug.log*

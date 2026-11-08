@@ -52,14 +52,15 @@ export function createFroniusBaselineStore(dbPath: string) {
   return {
     ensureDailyBaseline(date: string, meterImportWh: number, meterExportWh: number, inverterTotalWh: number) {
       const records = loadJsonRecord(dbPath);
-      const now = new Date().toISOString();
-      records[date] = {
-        date,
-        meter_import_wh: meterImportWh,
-        meter_export_wh: meterExportWh,
-        inverter_total_wh: inverterTotalWh,
-        recorded_at: now,
-      };
+      if (!records[date]) {
+        records[date] = {
+          date,
+          meter_import_wh: meterImportWh,
+          meter_export_wh: meterExportWh,
+          inverter_total_wh: inverterTotalWh,
+          recorded_at: new Date().toISOString(),
+        };
+      }
 
       const cutoff = new Date(retentionCutoffIso(RETENTION_DAYS)).getTime();
       const filtered = Object.values(records).filter((entry) => new Date(entry.recorded_at).getTime() >= cutoff);

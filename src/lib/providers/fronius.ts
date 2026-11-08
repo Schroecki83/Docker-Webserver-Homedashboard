@@ -3,6 +3,7 @@ import {
   computeLoadEnergyTodayKwh,
 } from "@/lib/providers/fronius-mapping";
 import { ensureFroniusDailyBaseline, getFroniusDailyBaseline, todayUtcDate } from "@/lib/fronius-baseline-store";
+import { log } from "@/lib/logger";
 import type { ElectricalMetrics } from "@/lib/types";
 
 interface FroniusStatus {
@@ -151,6 +152,21 @@ export async function fetchPowerFlow(): Promise<ElectricalMetrics> {
     batteryStoredEnergyKwh: storageMetrics.batteryStoredEnergyKwh,
     batteryCapacityKwh: storageMetrics.batteryCapacityKwh,
   };
+}
+
+export async function fetchRealtimePowerFlow(): Promise<ElectricalMetrics> {
+  const { FRONIUS_BASE_URL } = env();
+  const baseUrl = FRONIUS_BASE_URL.replace(/\/$/, "");
+  const headers = buildHeaders();
+  const [powerFlowResponse, storageMetrics] = await Promise.all([
+    fetchJson<FroniusPowerFlowResponse>(`${baseUrl}/solar_api/v1/GetPowerFlowRealtimeData.fcgi`, headers),
+    fetchStorageMetrics(baseUrl, headers).catch((err: unknown) => {
+      log("warn", "fronius.storage_failed", { message: err instanceof Error ? err.message : String(err) });
+      return null;
+    }),
+  ]);
+  const metrics = mapPowerFlow(powerFlowResponse);
+  return { ...metrics, batterySocPct: storageMetrics?.batterySocPct ?? metrics.batterySocPct };
 }
 
 async function fetchJson<T>(url: string, headers?: HeadersInit): Promise<T> {

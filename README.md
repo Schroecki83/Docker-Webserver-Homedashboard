@@ -8,7 +8,7 @@ Stable release: `1.0.0`
 
 - Status: aktiv
 - Container: `home-dashboard` läuft aktuell und ist an Host-Port `3001` gebunden
-- Laufzeitmodell: Next.js App mit SSE-Stream und SQLite-Historie für Fronius/Luxtronic
+- Laufzeitmodell: Next.js App mit SSE-Stream und dateibasierter Historie für Fronius/Luxtronic
 - Verfügbar als LAN-Dashboard unter `http://192.168.70.26:3001`
 
 Current data sources:
@@ -19,7 +19,7 @@ Current data sources:
 
 ## Docker-Betrieb
 
-Der Container `home-dashboard` wird aus dem lokalen `Dockerfile` gebaut, läuft standardmäßig als UID/GID `1000:1000` und startet mit `restart: unless-stopped`. Host-Port `3001` wird auf Container-Port `3001` abgebildet. Das Verzeichnis `./data` wird nach `/app/data` gemountet und enthält die persistenten SQLite-Historien. Die Zugangsdaten für Fronius, Luxtronic und Shelly werden ausschließlich über `.env` an den Container übergeben.
+Der Container `home-dashboard` wird aus dem lokalen `Dockerfile` gebaut, läuft standardmäßig als UID/GID `1000:1000` und startet mit `restart: unless-stopped`. Host-Port `3001` wird auf Container-Port `3001` abgebildet. Das Verzeichnis `./data` wird nach `/app/data` gemountet und enthält die persistenten JSON-Dateien für Historie und Tages-Baselines. Die Zugangsdaten für Fronius, Luxtronic und Shelly werden ausschließlich über `.env` an den Container übergeben.
 
 Der Container verwendet für DNS die Resolver `1.1.1.1` und `8.8.8.8`. Nach Änderungen an Code oder Konfiguration:
 
@@ -33,9 +33,10 @@ curl -fsS http://localhost:3001/api/health
 
 - Frontend uses Server-Sent Events via `/api/stream` for live updates.
 - Stream updates are emitted every 1 hour (throttled for Open-Meteo free tier rate limits).
+- While the Fronius tab is open, it refreshes power flow and battery state of charge separately every 10 seconds, without requesting weather or daily totals.
 - Backend still exposes `/api/snapshot` for direct JSON polling/debugging.
-- Heatpump history is stored in SQLite.
-- Fronius daily values are derived from local cumulative counters and a per-day baseline.
+- Heatpump history is stored in a JSON file.
+- Fronius daily API values are derived from local cumulative counters and the first recorded baseline per UTC day; they are not displayed in the Fronius tab.
 
 ## Quick Start
 
@@ -80,10 +81,9 @@ npm run lint
 ```
 
 Notes:
-- Full test execution requires a Node.js runtime that includes `node:sqlite`.
 - The dashboard now uses a harmonized color palette between the Temperaturen and Wettervorhersage cards.
 - Wettervorhersage icons are rendered with animated Meteocons SVG assets.
-- Tab row contains 3 entries (Dashboard, Fronius, Heizung).
+- Tab row contains 4 entries (Dashboard, Fronius, Heizung, Haushalt).
 
 ## Tablet / Edge-to-Edge Mode
 
@@ -97,7 +97,8 @@ Notes:
 - `FRONIUS_BASE_URL` local inverter base URL, e.g. `http://192.168.70.79` (default set)
 - `FRONIUS_USERNAME` optional basic-auth user
 - `FRONIUS_PASSWORD` optional basic-auth password
-- `HEATPUMP_HISTORY_DB_PATH` SQLite DB path (default `/app/data/heatpump-history.db`)
+- `FRONIUS_BASELINE_DB_PATH` Fronius baseline JSON file path (default `/app/data/fronius-baseline.db`)
+- `HEATPUMP_HISTORY_DB_PATH` heatpump history JSON file path (default `/app/data/heatpump-history.db`)
 - `LUXTRONIC_HOST` heatpump IP/host (default set)
 - `LUXTRONIC_PORT` heatpump port (default `8214`)
 - `LUXTRONIC_PASSWORD` heatpump password (required)
@@ -108,7 +109,7 @@ Notes:
 - `PORT` app port (default `3001`)
 
 Notes:
-- In Docker mode, `./data` is mounted to `/app/data` for persistent SQLite history.
+- In Docker mode, `./data` is mounted to `/app/data` for persistent history and baseline files.
 - Empty `SHELLY_*_DEVICES` values are valid and resolve to empty lists.
 
 ## API Endpoints
@@ -117,6 +118,7 @@ Notes:
 - `GET /api/stream` SSE stream for live dashboard updates
 - `GET /api/snapshot` single snapshot payload (debug/compat)
 - `GET /api/fronius` raw mapped Fronius metrics
+- `GET /api/fronius/realtime` current power flow and battery state of charge
 - `GET /api/heatpump/history?days=<1..30>` persisted heatpump points (default `30`)
 
 ## Documentation

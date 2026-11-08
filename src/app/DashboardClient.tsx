@@ -28,6 +28,8 @@ export function DashboardClient() {
   const [snapshot, setSnapshot] = useState<DashboardSnapshot | null>(null);
   const [snapshotError, setSnapshotError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [froniusRealtime, setFroniusRealtime] = useState<ElectricalMetrics | undefined>();
+  const [froniusError, setFroniusError] = useState<string | null>(null);
 
   useEffect(() => {
     const es = new EventSource("/api/stream");
@@ -59,6 +61,40 @@ export function DashboardClient() {
     };
   }, []);
 
+  useEffect(() => {
+    if (activeTab !== "pv") return;
+
+    const controller = new AbortController();
+    let timer: ReturnType<typeof setTimeout>;
+
+    async function refresh() {
+      try {
+        const response = await fetch("/api/fronius/realtime", { cache: "no-store", signal: controller.signal });
+        if (!response.ok) {
+          throw new Error(`Fronius HTTP ${response.status}`);
+        }
+        const data = (await response.json()) as ElectricalMetrics;
+        if (!controller.signal.aborted) {
+          setFroniusRealtime(data);
+          setFroniusError(null);
+        }
+      } catch (err) {
+        if (!controller.signal.aborted) {
+          setFroniusRealtime(undefined);
+          setFroniusError(err instanceof Error ? err.message : "Fronius-Daten nicht verfügbar");
+        }
+      } finally {
+        if (!controller.signal.aborted) timer = setTimeout(refresh, 10_000);
+      }
+    }
+
+    void refresh();
+    return () => {
+      controller.abort();
+      clearTimeout(timer);
+    };
+  }, [activeTab]);
+
   const heatpumpRows = useMemo(() => mapHeatpumpRows(snapshot?.heatpump), [snapshot?.heatpump]);
   const temperatureRows = useMemo(() => mapTemperatureRows(snapshot?.heatpump, snapshot?.climate ?? []).slice(0, 4), [snapshot?.heatpump, snapshot?.climate]);
   const weather = snapshot?.weather;
@@ -77,7 +113,13 @@ export function DashboardClient() {
           <button
             type="button"
             className={activeTab === "pv" ? "tab-btn tab-fronius active" : "tab-btn tab-fronius"}
-            onClick={() => setActiveTab("pv")}
+            onClick={() => {
+              if (activeTab !== "pv") {
+                setFroniusRealtime(undefined);
+                setFroniusError(null);
+                setActiveTab("pv");
+              }
+            }}
           >
             Fronius
           </button>
@@ -131,12 +173,8 @@ export function DashboardClient() {
         ) : activeTab === "pv" ? (
           <section className="tab-panel tab-panel-fronius" aria-live="polite">
             <h2>PV Fronius</h2>
-            {snapshotError ? <p className="state-line error">{snapshotError}</p> : null}
-
-            <div className="fronius-layout">
-              <FroniusRealtimePanel electrical={snapshot?.electrical} />
-              <FroniusDailyPanel electrical={snapshot?.electrical} />
-            </div>
+            {froniusError ? <p className="state-line error">{froniusError}</p> : null}
+            <FroniusRealtimePanel electrical={froniusRealtime} />
           </section>
         ) : activeTab === "household" ? (
           <section className="tab-panel tab-panel-haushalt" aria-live="polite">
@@ -245,46 +283,46 @@ function WeatherConditionIcon({ code }: { code: number | null }) {
   return <Image src={iconSrc} alt="" className="weather-icon-svg" fill unoptimized sizes="120px" />;
 }
 
-function FroniusRealtimePanel({ electrical }: { electrical?: ElectricalMetrics }) {
-  const pvPowerW = electrical?.pvPowerW ?? 0;
-  const loadPowerW = electrical?.loadPowerW ?? 0;
-  const gridPowerW = electrical?.gridPowerW ?? 0;
-  const batteryPowerW = electrical?.batteryPowerW ?? 0;
+export function FroniusRealtimePanel({ electrical }: { electrical?: ElectricalMetrics }) {
+  const pvPowerW = electrical?.pvPowerW;
+  const loadPowerW = electrical?.loadPowerW;
+  const gridPowerW = electrical?.gridPowerW;
+  const batteryPowerW = electrical?.batteryPowerW;
   const batterySoc = electrical?.batterySocPct ?? null;
-  const batteryCapacity = electrical?.batteryCapacityKwh ?? null;
-  const gridFlowClass = gridPowerW < 0 ? "flow-green" : gridPowerW > 0 ? "flow-red" : "flow-neutral";
-  const batteryFlowClass = batteryPowerW < 0 ? "flow-green" : batteryPowerW > 0 ? "flow-red" : "flow-neutral";
+  const gridFlowClass = gridPowerW === undefined ? "flow-neutral" : gridPowerW < 0 ? "flow-green" : gridPowerW > 0 ? "flow-red" : "flow-neutral";
+  const batteryFlowClass = batteryPowerW === undefined ? "flow-neutral" : batteryPowerW < 0 ? "flow-green" : batteryPowerW > 0 ? "flow-red" : "flow-neutral";
 
   return (
     <article className="fronius-realtime-card">
       <div className="fronius-realtime-header">
         <p>Realtime</p>
+        <span>{electrical?.timestampUtc ? `Stand: ${formatTime(electrical.timestampUtc, true)}` : "Keine Live-Daten"}</span>
       </div>
 
       <div className="fronius-realtime-grid">
         <RealtimeMetricCard
           label="PV Production"
           reading={formatPowerParts(pvPowerW)}
-          detail={pvPowerW > 0 ? "Produktion aktiv" : "Keine Produktion"}
+          detail={pvPowerW === undefined ? "Keine Daten" : pvPowerW > 0 ? "Produktion aktiv" : "Keine Produktion"}
           accentClass="pv"
         />
         <RealtimeMetricCard
           label="Consumption"
           reading={formatPowerParts(loadPowerW)}
-          detail={loadPowerW > 0 ? "Aktueller Verbrauch" : "Kein Verbrauch"}
+          detail={loadPowerW === undefined ? "Keine Daten" : loadPowerW > 0 ? "Aktueller Verbrauch" : "Kein Verbrauch"}
           accentClass="consumption"
         />
         <RealtimeMetricCard
           label="Grid"
           reading={formatPowerParts(gridPowerW)}
-          detail={gridPowerW >= 0 ? "Netzbezug" : "Einspeisung"}
+          detail={gridPowerW === undefined ? "Keine Daten" : gridPowerW >= 0 ? "Netzbezug" : "Einspeisung"}
           accentClass="grid"
           flowClass={gridFlowClass}
         />
         <RealtimeMetricCard
           label="Battery"
           reading={formatPowerParts(batteryPowerW)}
-          detail={formatBatteryDetail(batterySoc, batteryCapacity)}
+          detail={batterySoc !== null ? `SOC ${Math.round(batterySoc)}%` : "Keine Batteriedaten"}
           accentClass="battery"
           flowClass={batteryFlowClass}
         />
@@ -314,92 +352,6 @@ function RealtimeMetricCard({
         <span>{reading.unit}</span>
       </div>
       <span>{detail}</span>
-    </article>
-  );
-}
-
-function FroniusDailyPanel({ electrical }: { electrical?: ElectricalMetrics }) {
-  const batteryValue =
-    electrical?.batteryStoredEnergyKwh !== null && electrical?.batteryStoredEnergyKwh !== undefined
-      ? formatEnergy(electrical.batteryStoredEnergyKwh, 1)
-      : electrical?.batterySocPct !== null && electrical?.batterySocPct !== undefined
-        ? `${Math.round(electrical.batterySocPct)} %`
-        : "--";
-  const batteryUnit =
-    electrical?.batteryStoredEnergyKwh !== null && electrical?.batteryStoredEnergyKwh !== undefined
-      ? formatBatteryUnit(electrical.batterySocPct ?? null, electrical.batteryCapacityKwh ?? null)
-      : electrical?.batterySocPct !== null && electrical?.batterySocPct !== undefined
-        ? "SOC"
-        : "";
-
-  return (
-    <aside className="fronius-side-card">
-      <div className="fronius-day-header">
-        <p>{formatDateLabel(electrical?.timestampUtc)}</p>
-        <span>Tageswerte</span>
-      </div>
-
-      <div className="fronius-day-list">
-        <DayMetricRow
-          iconSrc="/images/pv.svg"
-          iconAlt="PV"
-          label="PV Produktion"
-          value={formatEnergy(electrical?.pvEnergyTodayKwh ?? null)}
-          unit="kWh"
-        />
-        <DayMetricRow
-          iconSrc="/images/consumption.svg"
-          iconAlt="Verbrauch"
-          label="Stromverbrauch"
-          value={formatEnergy(electrical?.loadEnergyTodayKwh ?? null)}
-          unit="kWh"
-        />
-        <DayMetricRow
-          iconSrc="/images/battery_25.svg"
-          iconAlt="Batterie"
-          label="Batterieladung"
-          value={batteryValue}
-          unit={batteryUnit}
-        />
-        <DayMetricRow
-          iconSrc="/images/grid.svg"
-          iconAlt="Netz"
-          label="Stromexport"
-          value={formatEnergy(electrical?.gridExportTodayKwh ?? null)}
-          unit="kWh"
-        />
-      </div>
-
-      <p className="power-time">{electrical?.timestampUtc ? `Stand: ${formatTime(electrical.timestampUtc)}` : "Kein Zeitstempel"}</p>
-    </aside>
-  );
-}
-
-function DayMetricRow({
-  iconSrc,
-  iconAlt,
-  label,
-  value,
-  unit,
-}: {
-  iconSrc: string;
-  iconAlt: string;
-  label: string;
-  value: string;
-  unit: string;
-}) {
-  return (
-    <article className="fronius-day-item">
-      <div className="fronius-day-icon-wrap">
-        <Image src={iconSrc} alt={iconAlt} width={38} height={38} className="fronius-day-icon" />
-      </div>
-      <div className="fronius-day-copy">
-        <p>{label}</p>
-        <div className="fronius-day-value">
-          <strong>{value}</strong>
-          {unit ? <span>{unit}</span> : null}
-        </div>
-      </div>
     </article>
   );
 }
@@ -458,33 +410,7 @@ function formatHumidity(value: number | null) {
   return `${value.toFixed(0)} %`;
 }
 
-function formatEnergy(value: number | null, decimals = 2) {
-  if (value === null || Number.isNaN(value)) {
-    return "--";
-  }
-
-  return value.toLocaleString("de-AT", {
-    minimumFractionDigits: decimals,
-    maximumFractionDigits: decimals,
-  });
-}
-
-function formatDateLabel(timestampUtc?: string) {
-  const date = timestampUtc ? new Date(timestampUtc) : new Date();
-  if (Number.isNaN(date.getTime())) {
-    return "Heute";
-  }
-
-  return new Intl.DateTimeFormat("de-AT", {
-    weekday: "long",
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-    timeZone: "Europe/Vienna",
-  }).format(date);
-}
-
-function formatTime(value: string) {
+function formatTime(value: string, includeSeconds = false) {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) {
     return value;
@@ -496,6 +422,7 @@ function formatTime(value: string) {
     year: "numeric",
     hour: "2-digit",
     minute: "2-digit",
+    second: includeSeconds ? "2-digit" : undefined,
   }).format(date);
 }
 
@@ -512,44 +439,15 @@ function StaleBadge({ timestampUtc, hasData }: { timestampUtc: string; hasData: 
   return <span className="stale-badge cached"> letzter Wert {formatTime(timestampUtc)}</span>;
 }
 
-function formatPowerParts(valueW: number) {
+function formatPowerParts(valueW: number | undefined) {
+  if (valueW === undefined || !Number.isFinite(valueW)) {
+    return { value: "--", unit: "" };
+  }
   const absValue = Math.abs(valueW);
   if (absValue >= 1000) {
     return { value: (absValue / 1000).toFixed(2), unit: "kW" };
   }
   return { value: `${Math.round(absValue)}`, unit: "W" };
-}
-
-function formatBatteryDetail(soc: number | null, capacityKwh: number | null) {
-  if (soc !== null && capacityKwh !== null) {
-    return `${Math.round(soc)}% von ${formatEnergy(capacityKwh, 1)} kWh`;
-  }
-
-  if (soc !== null) {
-    return `SOC ${Math.round(soc)}%`;
-  }
-
-  if (capacityKwh !== null) {
-    return `Kapazitaet ${formatEnergy(capacityKwh, 1)} kWh`;
-  }
-
-  return "Keine Batteriedaten";
-}
-
-function formatBatteryUnit(soc: number | null, capacityKwh: number | null) {
-  if (soc !== null && capacityKwh !== null) {
-    return `kWh / ${formatEnergy(capacityKwh, 1)} kWh (${Math.round(soc)}%)`;
-  }
-
-  if (soc !== null) {
-    return `kWh (${Math.round(soc)}%)`;
-  }
-
-  if (capacityKwh !== null) {
-    return `kWh / ${formatEnergy(capacityKwh, 1)} kWh`;
-  }
-
-  return "kWh";
 }
 
 function formatForecastWeekday(dateValue: string) {

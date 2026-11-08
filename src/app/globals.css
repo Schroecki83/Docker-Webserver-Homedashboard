@@ -445,15 +445,7 @@ body {
   color: var(--muted);
 }
 
-.fronius-layout {
-  display: grid;
-  grid-template-columns: minmax(0, 1.35fr) minmax(320px, 0.85fr);
-  gap: 22px;
-  align-items: start;
-}
-
-.fronius-realtime-card,
-.fronius-side-card {
+.fronius-realtime-card {
   border: 1px solid rgba(244, 227, 163, 0.28);
   border-radius: 22px;
   padding: 22px;
@@ -562,81 +554,6 @@ body {
   box-shadow: inset 3px 0 0 0 #b9d9a8;
 }
 
-.fronius-day-header {
-  margin-bottom: 18px;
-}
-
-.fronius-day-header p {
-  margin: 0;
-  font-size: 1.3rem;
-  font-weight: 700;
-  color: var(--text);
-  text-transform: capitalize;
-}
-
-.fronius-day-header span {
-  display: inline-block;
-  margin-top: 4px;
-  color: var(--tab-fronius);
-  font-size: 0.95rem;
-  letter-spacing: 0.04em;
-}
-
-.fronius-day-list {
-  display: grid;
-  gap: 14px;
-}
-
-.fronius-day-item {
-  display: grid;
-  grid-template-columns: 72px minmax(0, 1fr);
-  gap: 16px;
-  align-items: center;
-  padding: 14px 16px;
-  border: 1px solid rgba(159, 176, 195, 0.14);
-  border-radius: 18px;
-  background: rgba(8, 15, 23, 0.7);
-}
-
-.fronius-day-icon-wrap {
-  width: 72px;
-  height: 72px;
-  border-radius: 18px;
-  display: grid;
-  place-items: center;
-  background: rgba(255, 255, 255, 0.06);
-}
-
-.fronius-day-icon {
-  width: 38px;
-  height: 38px;
-  object-fit: contain;
-}
-
-.fronius-day-copy p {
-  margin: 0 0 8px;
-  color: var(--muted);
-  font-size: 0.95rem;
-}
-
-.fronius-day-value {
-  display: flex;
-  align-items: baseline;
-  gap: 10px;
-  flex-wrap: wrap;
-}
-
-.fronius-day-value strong {
-  font-size: clamp(1.5rem, 2.8vw, 2.3rem);
-  line-height: 1;
-  color: var(--text);
-}
-
-.fronius-day-value span {
-  color: var(--muted);
-  font-size: 0.95rem;
-}
-
 @media (min-width: 1600px) and (min-height: 900px) {
   .dash-shell {
     padding: 28px;
@@ -662,17 +579,7 @@ body {
     font-size: 2rem;
   }
 
-  .fronius-layout {
-    grid-template-columns: minmax(0, 1.4fr) minmax(380px, 0.9fr);
-    gap: 28px;
-  }
-
-  .fronius-side-card {
-    padding: 26px;
-  }
-
-  .fronius-realtime-header p,
-  .fronius-day-header p {
+  .fronius-realtime-header p {
     font-size: 1.55rem;
   }
 
@@ -682,21 +589,6 @@ body {
 
   .fronius-metric-card {
     padding: 22px;
-  }
-
-  .fronius-day-item {
-    grid-template-columns: 82px minmax(0, 1fr);
-    padding: 18px;
-  }
-
-  .fronius-day-icon-wrap {
-    width: 82px;
-    height: 82px;
-  }
-
-  .fronius-day-icon {
-    width: 44px;
-    height: 44px;
   }
 
   .temperature-grid {
@@ -815,10 +707,6 @@ body {
     padding: 18px;
   }
 
-  .fronius-layout {
-    grid-template-columns: 1fr;
-  }
-
   .fronius-realtime-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -856,10 +744,6 @@ body {
     padding: 16px;
   }
 
-  .fronius-side-card {
-    padding: 16px;
-  }
-
   .fronius-realtime-grid {
     grid-template-columns: 1fr;
     gap: 12px;
@@ -867,23 +751,6 @@ body {
 
   .fronius-metric-card {
     padding: 14px;
-  }
-
-  .fronius-day-item {
-    grid-template-columns: 56px minmax(0, 1fr);
-    gap: 12px;
-    padding: 12px;
-  }
-
-  .fronius-day-icon-wrap {
-    width: 56px;
-    height: 56px;
-    border-radius: 14px;
-  }
-
-  .fronius-day-icon {
-    width: 28px;
-    height: 28px;
   }
 
   .temperature-grid {
@@ -975,16 +842,10 @@ body {
     padding: clamp(20px, 2.8vw, 26px);
   }
 
-  .fronius-layout {
-    grid-template-columns: 1fr;
-    gap: 18px;
-  }
-
   .fronius-realtime-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .fronius-side-card,
   .fronius-realtime-card {
     padding: clamp(18px, 2.4vw, 24px);
   }

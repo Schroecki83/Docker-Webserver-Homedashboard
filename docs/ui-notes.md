@@ -1,5 +1,10 @@
 # UI Notes
 
+## Fronius Realtime View
+
+- The Fronius tab displays current PV, consumption, grid and battery power, plus battery state of charge and the reading timestamp.
+- Daily totals and battery capacity are not displayed. While the tab is open, Fronius readings refresh separately every 10 seconds; the other dashboard sources keep their existing refresh schedule.
+
 ## 2026-06-14
 
 ### Android Edge-to-Edge Support
