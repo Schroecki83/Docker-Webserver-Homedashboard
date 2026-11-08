@@ -439,7 +439,6 @@ body {
   color: var(--warn);
 }
 
-.power-note,
 .power-time {
   margin: 4px 0;
   color: var(--muted);
@@ -519,17 +518,20 @@ body {
 }
 
 .fronius-metric-reading.flow-green strong,
-.fronius-metric-reading.flow-green > span {
+.fronius-metric-reading.flow-green > span,
+.fronius-grid-icon.flow-green {
   color: #79d16b;
 }
 
 .fronius-metric-reading.flow-red strong,
-.fronius-metric-reading.flow-red > span {
+.fronius-metric-reading.flow-red > span,
+.fronius-grid-icon.flow-red {
   color: #ef6f6c;
 }
 
 .fronius-metric-reading.flow-neutral strong,
-.fronius-metric-reading.flow-neutral > span {
+.fronius-metric-reading.flow-neutral > span,
+.fronius-grid-icon.flow-neutral {
   color: var(--text);
 }
 
@@ -552,6 +554,26 @@ body {
 
 .fronius-metric-card.battery {
   box-shadow: inset 3px 0 0 0 #b9d9a8;
+}
+
+.fronius-metric-card.has-icon {
+  position: relative;
+  padding-right: 90px;
+}
+
+.fronius-metric-icon {
+  position: absolute;
+  right: 16px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 64px;
+  height: 64px;
+  object-fit: contain;
+}
+
+.fronius-grid-icon {
+  background-color: currentColor;
+  mask: url("/images/grid.svg") center / contain no-repeat;
 }
 
 @media (min-width: 1600px) and (min-height: 900px) {
@@ -622,7 +644,6 @@ body {
   }
 
   .temperature-meta,
-  .power-note,
   .power-time,
   .metric-list li,
   .state-line {

@@ -3,7 +3,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { FroniusRealtimePanel } from "@/app/DashboardClient";
-import { fetchRealtimePowerFlow } from "@/lib/providers/fronius";
+import { fetchRealtimePowerFlow, mapPowerFlow } from "@/lib/providers/fronius";
 
 vi.mock("@/lib/env", () => ({
   env: () => ({ FRONIUS_BASE_URL: "http://fronius.test", FRONIUS_USERNAME: "", FRONIUS_PASSWORD: "" }),
@@ -50,7 +50,11 @@ describe("Fronius realtime", () => {
     expect(html).toContain("Consumption");
     expect(html).toContain("Grid");
     expect(html).toContain("Battery");
+    expect(html).toContain('src="/images/pv.svg"');
+    expect(html).toContain('src="/images/consumption.svg"');
+    expect(html).toContain('fronius-grid-icon flow-green');
     expect(html).toContain("SOC 75%");
+    expect(html).toContain("/images/battery_charging_75.svg");
     expect(html).toContain("2.50");
     expect(html).not.toContain("Tageswerte");
     expect(html).not.toContain("kWh");
@@ -62,6 +66,48 @@ describe("Fronius realtime", () => {
     expect(html).toContain("Keine Live-Daten");
     expect(html.match(/<strong>--<\/strong>/g)).toHaveLength(4);
     expect(html).not.toContain("Kein Verbrauch");
+    expect(html).not.toContain("fronius-battery-icon");
+    expect(html).toContain("fronius-grid-icon flow-neutral");
+  });
+
+  it.each([
+    [-1, "flow-green", "Einspeisung"],
+    [0, "flow-neutral", "Netzbezug"],
+    [1, "flow-red", "Netzbezug"],
+  ])("matches the grid icon and reading flow for %s W", (gridPowerW, flowClass, detail) => {
+    const html = renderToStaticMarkup(createElement(FroniusRealtimePanel, {
+      electrical: { ...mapPowerFlow(powerFlow), gridPowerW },
+    }));
+    expect(html).toContain(`fronius-metric-reading ${flowClass}`);
+    expect(html).toContain(`fronius-grid-icon ${flowClass}`);
+    expect(html).toContain(detail);
+  });
+
+  it.each([
+    [0, 25], [37.49, 25], [37.5, 50], [62.49, 50],
+    [62.5, 75], [87.49, 75], [87.5, 100], [100, 100],
+  ])("selects level %s as the %s%% icon for charging and non-charging power", (soc, level) => {
+    const metrics = mapPowerFlow(powerFlow);
+    for (const [power, prefix] of [[-1, "charging_"], [0, ""], [1, ""]] as const) {
+      const html = renderToStaticMarkup(createElement(FroniusRealtimePanel, {
+        electrical: { ...metrics, batterySocPct: soc, batteryPowerW: power },
+      }));
+      expect(html).toContain(`/images/battery_${prefix}${level}.svg`);
+    }
+  });
+
+  it.each([null, -1, 101, Number.NaN])("omits the icon for invalid charge %s", (soc) => {
+    const html = renderToStaticMarkup(createElement(FroniusRealtimePanel, {
+      electrical: { ...mapPowerFlow(powerFlow), batterySocPct: soc },
+    }));
+    expect(html).not.toContain("fronius-battery-icon");
+  });
+
+  it("omits the icon for invalid battery power", () => {
+    const html = renderToStaticMarkup(createElement(FroniusRealtimePanel, {
+      electrical: { ...mapPowerFlow(powerFlow), batteryPowerW: Number.NaN },
+    }));
+    expect(html).not.toContain("fronius-battery-icon");
   });
 
   it("uses the inverter charge when storage data fails", async () => {

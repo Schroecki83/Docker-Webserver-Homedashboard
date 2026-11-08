@@ -34,6 +34,7 @@ curl -fsS http://localhost:3001/api/health
 - Frontend uses Server-Sent Events via `/api/stream` for live updates.
 - Stream updates are emitted every 1 hour (throttled for Open-Meteo free tier rate limits).
 - While the Fronius tab is open, it refreshes power flow and battery state of charge separately every 10 seconds, without requesting weather or daily totals.
+- The Fronius cards show source icons; the grid icon follows the import/export color, and the battery icon reflects charging status and approximate charge level.
 - Backend still exposes `/api/snapshot` for direct JSON polling/debugging.
 - Heatpump history is stored in a JSON file.
 - Fronius daily API values are derived from local cumulative counters and the first recorded baseline per UTC day; they are not displayed in the Fronius tab.

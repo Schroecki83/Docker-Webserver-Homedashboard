@@ -305,12 +305,14 @@ export function FroniusRealtimePanel({ electrical }: { electrical?: ElectricalMe
           reading={formatPowerParts(pvPowerW)}
           detail={pvPowerW === undefined ? "Keine Daten" : pvPowerW > 0 ? "Produktion aktiv" : "Keine Produktion"}
           accentClass="pv"
+          iconSrc="/images/pv.svg"
         />
         <RealtimeMetricCard
           label="Consumption"
           reading={formatPowerParts(loadPowerW)}
           detail={loadPowerW === undefined ? "Keine Daten" : loadPowerW > 0 ? "Aktueller Verbrauch" : "Kein Verbrauch"}
           accentClass="consumption"
+          iconSrc="/images/consumption.svg"
         />
         <RealtimeMetricCard
           label="Grid"
@@ -318,6 +320,7 @@ export function FroniusRealtimePanel({ electrical }: { electrical?: ElectricalMe
           detail={gridPowerW === undefined ? "Keine Daten" : gridPowerW >= 0 ? "Netzbezug" : "Einspeisung"}
           accentClass="grid"
           flowClass={gridFlowClass}
+          gridIcon
         />
         <RealtimeMetricCard
           label="Battery"
@@ -325,6 +328,7 @@ export function FroniusRealtimePanel({ electrical }: { electrical?: ElectricalMe
           detail={batterySoc !== null ? `SOC ${Math.round(batterySoc)}%` : "Keine Batteriedaten"}
           accentClass="battery"
           flowClass={batteryFlowClass}
+          iconSrc={batteryIconSrc(batterySoc, batteryPowerW)}
         />
       </div>
     </article>
@@ -337,23 +341,38 @@ function RealtimeMetricCard({
   detail,
   accentClass,
   flowClass,
+  iconSrc,
+  gridIcon,
 }: {
   label: string;
   reading: { value: string; unit: string };
   detail: string;
   accentClass: string;
   flowClass?: "flow-green" | "flow-red" | "flow-neutral";
+  iconSrc?: string;
+  gridIcon?: boolean;
 }) {
   return (
-    <article className={`fronius-metric-card ${accentClass}`}>
+    <article className={`fronius-metric-card ${accentClass}${iconSrc || gridIcon ? " has-icon" : ""}`}>
       <p>{label}</p>
       <div className={`fronius-metric-reading ${flowClass ?? "flow-neutral"}`}>
         <strong>{reading.value}</strong>
         <span>{reading.unit}</span>
       </div>
       <span>{detail}</span>
+      {iconSrc ? <Image src={iconSrc} alt="" width={64} height={64} className={`fronius-metric-icon${accentClass === "battery" ? " fronius-battery-icon" : ""}`} unoptimized /> : null}
+      {gridIcon ? <span aria-hidden="true" className={`fronius-metric-icon fronius-grid-icon ${flowClass ?? "flow-neutral"}`} /> : null}
     </article>
   );
+}
+
+function batteryIconSrc(soc: number | null, powerW: number | undefined): string | undefined {
+  if (soc === null || !Number.isFinite(soc) || soc < 0 || soc > 100 || powerW === undefined || !Number.isFinite(powerW)) {
+    return undefined;
+  }
+
+  const level = soc < 37.5 ? 25 : soc < 62.5 ? 50 : soc < 87.5 ? 75 : 100;
+  return `/images/battery_${powerW < 0 ? "charging_" : ""}${level}.svg`;
 }
 
 function mapHeatpumpRows(heatpump: HeatpumpSnapshot | undefined) {

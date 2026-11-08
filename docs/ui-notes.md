@@ -3,6 +3,8 @@
 ## Fronius Realtime View
 
 - The Fronius tab displays current PV, consumption, grid and battery power, plus battery state of charge and the reading timestamp.
+- The battery card displays a charging icon when battery power is negative and a non-charging icon otherwise. Icons use the nearest available charge level (25%, 50%, 75% or 100%); the exact state of charge remains visible. No icon is shown when charge or power is unavailable or invalid.
+- The PV and consumption cards show their respective icons. The grid icon uses the same flow colors as its reading: red for import, green for export, and neutral for zero or unavailable power.
 - Daily totals and battery capacity are not displayed. While the tab is open, Fronius readings refresh separately every 10 seconds; the other dashboard sources keep their existing refresh schedule.
 
 ## 2026-06-14
